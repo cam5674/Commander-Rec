@@ -14,7 +14,7 @@ Example: if a user owns many wheel effects and card-draw payoffs, the app may re
 2. Keep expected AWS costs under $10-$20 per month during development.
 3. Support large user collections, roughly 10,000-20,000 cards.
 4. Build a recommendation engine that is understandable, testable, and explainable.
-5. Produce a polished project suitable for a software engineering portfolio or resume.
+
 
 ## MVP Scope
 
@@ -122,15 +122,6 @@ Example explanation:
 - Commander detail pages
 - Deck-building suggestions for missing support cards
 
-## Out of Scope for MVP
-
-- User accounts
-- Permanent storage of user collections
-- Card pricing
-- Full deck legality validation
-- Real-time calls to the Scryfall API during recommendation requests
-- Machine learning model training
-
 ## Cost and Performance Targets
 
 - Keep AWS development costs under $10-$20 per month.
@@ -143,4 +134,4 @@ Example explanation:
 - Use Scryfall bulk data instead of calling the Scryfall API for every uploaded card.
 - Keep the first recommendation model rule-based and explainable.
 - Add tests around card normalization, theme detection, and commander scoring.
-- Treat saved uploads, accounts, and history as post-MVP features.
+

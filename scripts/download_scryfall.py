@@ -1,0 +1,1 @@
+#TODO: Make download script that makes a GET request to /bulk-data to download cards locally "https://scryfall.com/docs/api/bulk-data"
