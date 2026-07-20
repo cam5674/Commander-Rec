@@ -19,7 +19,7 @@ HEADERS = {
 
 
 
-DEFAULT_OUTPUT_PATH = Path("data/raw/default_cards.json")
+DEFAULT_OUTPUT_PATH = Path("data/raw/oracle_cards.json")
 
 # Number of bytes downloaded at a time.
 CHUNK_SIZE = 1024 * 1024  # 1 MB
@@ -40,7 +40,7 @@ def get_default_cards_metadata() -> dict[str, Any]:
     print("response success")
     # can change "type" to download other files from bulk-data
     for bulk_file in result["data"]:
-        if bulk_file["type"] == "default_cards":
+        if bulk_file["type"] == "oracle_cards":
             return bulk_file
 
     raise RuntimeError(
