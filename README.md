@@ -84,6 +84,22 @@ User-uploaded collections should be treated as temporary request data for the MV
 
 Avoid downloading a large processed card database from S3 on every request. That would add latency and make performance harder to control.
 
+### Processed Scryfall Outputs
+
+Run the local data pipeline from the repository root:
+
+```text
+python scripts/download_scryfall.py
+python scripts/process_scryfall.py
+```
+
+The processing script generates compact reference files in `data/processed`:
+
+- `cards_by_id.json`: one normalized card record per Oracle ID
+- `name_to_id.json`: case-insensitive card and card-face name lookup
+- `commanders.json`: Oracle IDs for commander-eligible cards
+- `theme_to_card_ids.json`: reverse index from theme tags to Oracle IDs
+
 ## Recommendation Strategy
 
 The recommendation engine should start with a simple, explainable scoring model:
@@ -134,4 +150,3 @@ Example explanation:
 - Use Scryfall bulk data instead of calling the Scryfall API for every uploaded card.
 - Keep the first recommendation model rule-based and explainable.
 - Add tests around card normalization, theme detection, and commander scoring.
-
