@@ -328,11 +328,6 @@ def process_cards(
             if not raw_card.get("oracle_id") or not raw_card.get("name"):
                 continue
 
-            games = raw_card.get("games", [])
-
-            if games and "paper" not in games:
-                skipped_non_paper_count += 1
-                continue
 
             normalized_card = normalize_card(raw_card)
             oracle_id = raw_card["oracle_id"]
