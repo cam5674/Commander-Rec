@@ -1,5 +1,7 @@
 import unittest
 from typing import Any
+import tempfile
+from pathlib import Path
 
 from scripts.process_scryfall import (
     classify_themes,
@@ -8,6 +10,11 @@ from scripts.process_scryfall import (
     is_commander,
     normalize_card,
     normalize_lookup_name,
+)
+
+from backend.csv_parser import(
+    load_name_to_id,
+    parse_collection,
 )
 
 
@@ -217,6 +224,60 @@ class ThemeClassificationTests(unittest.TestCase):
             keywords=["Flying", "Vigilance"],
         )
         self.assertEqual(themes, [])
+
+class CSVParserTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self.temporary_directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary_directory.cleanup)
+
+        self.directory = Path(self.temporary_directory.name)
+
+    def write_csv(self, content: str) -> Path:
+        csv_path = self.directory / "collection.csv"
+        csv_path.write_text(content, encoding="utf-8")
+        return csv_path
+
+
+
+
+    def test_combines_duplicate_cards(self) -> None:
+        name_to_id = {
+        "sol ring": "oracle-sol-ring",
+        }
+
+        csv_path = self.write_csv (
+        "Count,Tradelist Count,Name\n"
+        "1,0,Sol Ring\n"
+        "3,0,SOL RING\n"
+            )
+
+
+        collection, unmatched = parse_collection(
+        csv_path,
+        name_to_id,
+        )
+
+        # CSV contains two Sol Ring rows with quantities 1 and 3.
+        collection, unmatched = parse_collection(csv_path, name_to_id)
+
+        self.assertEqual(collection, {"oracle-sol-ring": 4})
+        self.assertEqual(unmatched, [])
+
+    def test_tracks_unmatched_cards(self) -> None:
+        csv_path = self.write_csv(
+        "Count,Tradelist Count,Name\n"
+        "1,0,Unknown Card\n"
+         )
+
+        collection, unmatched = parse_collection(
+            csv_path,
+            {},
+        )
+
+        self.assertEqual(collection, {})
+        self.assertEqual(unmatched, ["Unknown Card"])
+
+
 
 
 if __name__ == "__main__":

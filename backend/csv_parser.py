@@ -2,14 +2,13 @@ import csv
 import json
 from collections import defaultdict
 from pathlib import Path
-from process_scryfall import normalize_lookup_name
+
+from scripts.process_scryfall import normalize_lookup_name
 
 
-collection = defaultdict(int)
-CSV_PATH = Path("../data/raw/test_collection.csv")
-NAME_TO_ID_PATH = Path("../data/processed/name_to_id.json")
-
-
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+CSV_PATH = PROJECT_ROOT / "data" / "raw" / "test_collection.csv"
+NAME_TO_ID_PATH = PROJECT_ROOT / "data" / "processed" / "name_to_id.json"
 
 def load_name_to_id(path: Path) -> dict[str, str]:
     try:
@@ -25,8 +24,10 @@ def load_name_to_id(path: Path) -> dict[str, str]:
         ) from error
 
 
-def parse_collection( csv_path: Path, name_to_id: dict[str, str], 
-                     row_limit: int | None = None,
+def parse_collection(
+    csv_path: Path,
+    name_to_id: dict[str, str],
+    row_limit: int | None = None,
 ) -> tuple[dict[str, int], list[str]]:
     collection: defaultdict[str, int] = defaultdict(int)
     unmatched_names: list[str] = []
@@ -39,7 +40,7 @@ def parse_collection( csv_path: Path, name_to_id: dict[str, str],
         reader = csv.reader(file)
 
         try:
-            header = next(reader)
+            next(reader)
         except StopIteration:
             raise ValueError("The collection CSV is empty.")
 
@@ -86,17 +87,21 @@ def parse_collection( csv_path: Path, name_to_id: dict[str, str],
     return dict(collection), unmatched_names
 
 
-name_to_id = load_name_to_id(NAME_TO_ID_PATH)
+def main() -> None:
+    name_to_id = load_name_to_id(NAME_TO_ID_PATH)
+    collection, unmatched_names = parse_collection(
+        CSV_PATH,
+        name_to_id,
+        row_limit=20_000,  # Remove this argument after testing.
+    )
 
-collection, unmatched_names = parse_collection(
-    CSV_PATH,
-    name_to_id,
-    row_limit=20000,  # Remove this argument after testing.
-)
+    print(collection)
 
-print(collection)
+    if unmatched_names:
+        print("\nUnmatched card names:")
+        for name in unmatched_names:
+            print(f"- {name}")
 
-if unmatched_names:
-    print("\nUnmatched card names:")
-    for name in unmatched_names:
-        print(f"- {name}")
+
+if __name__ == "__main__":
+    main()
