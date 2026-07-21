@@ -24,6 +24,7 @@ result = response.json()
 
 for card in result["data"]:
     if card["cmc"] == 7:
+        print(card)
         print ((card["name"]))
 
 
