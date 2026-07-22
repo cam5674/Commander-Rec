@@ -2,7 +2,7 @@ import csv
 import json
 from collections import defaultdict
 from pathlib import Path
-
+from .data_loader import load_name_to_id
 from scripts.process_scryfall import normalize_lookup_name
 
 
@@ -11,20 +11,6 @@ CSV_PATH = PROJECT_ROOT / "data" / "raw" / "test_collection.csv"
 NAME_TO_ID_PATH = PROJECT_ROOT / "data" / "processed" / "name_to_id.json"
 NAME_HEADER_ALIASES = ("name", "card name")
 QUANTITY_HEADER_ALIASES = ("count", "quantity", "qty")
-
-
-def load_name_to_id(path: Path) -> dict[str, str]:
-    try:
-        with path.open("r", encoding="utf-8") as file:
-            return json.load(file)
-    except FileNotFoundError as error:
-        raise RuntimeError(
-            f"Name lookup file was not found: {path}"
-        ) from error
-    except json.JSONDecodeError as error:
-        raise RuntimeError(
-            f"Name lookup file contains invalid JSON: {path}"
-        ) from error
 
 
 def resolve_csv_columns(fieldnames: list[str] | None) -> tuple[str, str]:

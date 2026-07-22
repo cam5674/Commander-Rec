@@ -1,5 +1,3 @@
-
-
 import json
 import tempfile
 import unittest
@@ -242,6 +240,7 @@ class DataPipelineTests(unittest.TestCase):
             type_line="Legendary Creature — Human",
             oracle_text="Create a 1/1 creature token.",
         )
+        
         multiface_card = make_card(
             id="scryfall-valki",
             oracle_id="oracle-valki",
