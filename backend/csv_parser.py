@@ -9,6 +9,9 @@ from scripts.process_scryfall import normalize_lookup_name
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = PROJECT_ROOT / "data" / "raw" / "test_collection.csv"
 NAME_TO_ID_PATH = PROJECT_ROOT / "data" / "processed" / "name_to_id.json"
+NAME_HEADER_ALIASES = ("name", "card name")
+QUANTITY_HEADER_ALIASES = ("count", "quantity", "qty")
+
 
 def load_name_to_id(path: Path) -> dict[str, str]:
     try:
@@ -24,6 +27,44 @@ def load_name_to_id(path: Path) -> dict[str, str]:
         ) from error
 
 
+def resolve_csv_columns(fieldnames: list[str] | None) -> tuple[str, str]:
+    if not fieldnames:
+        raise ValueError("The collection CSV is empty.")
+
+    normalized_headers = {
+        header.strip().casefold(): header
+        for header in fieldnames
+        if header
+    }
+    name_column = next(
+        (
+            normalized_headers[alias]
+            for alias in NAME_HEADER_ALIASES
+            if alias in normalized_headers
+        ),
+        None,
+    )
+    quantity_column = next(
+        (
+            normalized_headers[alias]
+            for alias in QUANTITY_HEADER_ALIASES
+            if alias in normalized_headers
+        ),
+        None,
+    )
+
+    if name_column is None or quantity_column is None:
+        detected_headers = ", ".join(fieldnames)
+        raise ValueError(
+            "Unsupported CSV format. Expected a card-name column "
+            f"({', '.join(NAME_HEADER_ALIASES)}) and a quantity column "
+            f"({', '.join(QUANTITY_HEADER_ALIASES)}). "
+            f"Detected headers: {detected_headers}"
+        )
+
+    return name_column, quantity_column
+
+
 def parse_collection(
     csv_path: Path,
     name_to_id: dict[str, str],
@@ -37,23 +78,15 @@ def parse_collection(
         newline="",
         encoding="utf-8-sig",
     ) as file:
-        reader = csv.reader(file)
-
-        try:
-            next(reader)
-        except StopIteration:
-            raise ValueError("The collection CSV is empty.")
+        reader = csv.DictReader(file)
+        name_column, quantity_column = resolve_csv_columns(reader.fieldnames)
 
         for row_number, row in enumerate(reader, start=2):
             if row_limit is not None and row_number > row_limit + 1:
                 break
 
-            if len(row) < 3:
-                print(f"Skipping row {row_number}: not enough columns.")
-                continue
-
-            quantity_text = row[0].strip()
-            name = row[2].strip()
+            quantity_text = (row.get(quantity_column) or "").strip()
+            name = (row.get(name_column) or "").strip()
 
             if not name:
                 print(f"Skipping row {row_number}: card name is missing.")
