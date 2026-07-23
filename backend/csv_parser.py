@@ -1,5 +1,4 @@
 import csv
-import json
 from collections import defaultdict
 from pathlib import Path
 from .data_loader import load_name_to_id

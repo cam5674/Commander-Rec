@@ -1,6 +1,7 @@
 """Purpose of file: Load and validate processed reference data only"""
 import json
 from pathlib import Path
+from typing import Any
 
 
 
@@ -14,7 +15,7 @@ CARDS_BY_ID_PATH = PROCESSED_DATA_DIR / "cards_by_id.json"
 
 
 
-def load_json(path: Path) -> dict:
+def load_json(path: Path) -> object:
     try:
         with path.open("r", encoding="utf-8") as file:
             return json.load(file)
@@ -32,7 +33,9 @@ def load_name_to_id(path: Path= NAME_TO_ID_PATH) -> dict[str, str]:
 
     return data
 
-def load_cards_by_id(path: Path = CARDS_BY_ID_PATH)-> dict[str, object]:
+def load_cards_by_id(
+    path: Path = CARDS_BY_ID_PATH,
+) -> dict[str, dict[str, Any]]:
     data = load_json(path)
 
     if not isinstance(data, dict):

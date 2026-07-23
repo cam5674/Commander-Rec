@@ -8,10 +8,8 @@ from pathlib import Path
 
 
 
-from backend.csv_parser import(
-    load_name_to_id,
-    parse_collection,
-)
+from backend.csv_parser import parse_collection
+from backend.data_loader import load_name_to_id
 
 class CSVParserTests(unittest.TestCase):
     def setUp(self) -> None:
@@ -223,7 +221,7 @@ class CSVParserTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             RuntimeError,
-            "Name lookup file was not found",
+            "Could not find file",
         ):
             load_name_to_id(missing_path)
 
@@ -243,7 +241,7 @@ class CSVParserTests(unittest.TestCase):
 
         with self.assertRaisesRegex(
             RuntimeError,
-            "Name lookup file contains invalid JSON",
+            "Invalid JSON in file",
         ):
             load_name_to_id(malformed_path)
 
