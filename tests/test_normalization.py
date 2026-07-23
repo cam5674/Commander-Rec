@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from scripts.process_scryfall import (
+    THEME_RULES,
     add_name_mapping,
     classify_themes,
     combine_face_field,
@@ -174,6 +175,27 @@ class CommanderEligibilityTests(unittest.TestCase):
 
 
 class ThemeClassificationTests(unittest.TestCase):
+    def test_theme_rules_do_not_exceed_trigger_limit(self) -> None:
+        for theme, triggers in THEME_RULES.items():
+            with self.subTest(theme=theme):
+                self.assertLessEqual(len(triggers), 15)
+
+    def test_classifies_common_oracle_tag_wording(self) -> None:
+        examples = {
+            "graveyard": ("Flashback", "Sorcery", ["Flashback"]),
+            "tokens": ("Populate.", "Sorcery", ["Populate"]),
+            "lifegain": ("You gain 2 life.", "Instant", []),
+            "plus_one_counters": ("", "Creature — Mutant", ["Evolve"]),
+            "spellslinger": ("Magecraft — Whenever you cast or copy an instant or sorcery spell.", "Creature — Wizard", ["Magecraft"]),
+            "card_draw": ("Draw three cards.", "Sorcery", []),
+            "lands": ("Whenever a land you control enters, draw a card.", "Enchantment", []),
+        }
+
+        for expected_theme, (oracle_text, type_line, keywords) in examples.items():
+            with self.subTest(theme=expected_theme):
+                themes = classify_themes(oracle_text, type_line, keywords)
+                self.assertIn(expected_theme, themes)
+
     def test_classifies_wheel_text(self) -> None:
         themes = classify_themes(
             oracle_text=(
@@ -323,4 +345,3 @@ class DataPipelineTests(unittest.TestCase):
         
 if __name__ == "__main__":
     unittest.main()
-
