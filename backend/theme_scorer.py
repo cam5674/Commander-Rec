@@ -3,9 +3,45 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 from .data_loader import load_name_to_id, load_cards_by_id
+from scripts.process_scryfall import THEME_RULES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = PROJECT_ROOT / "data" / "raw" / "test_collection.csv"
+
+
+
+def print_theme_matches(
+    collection: dict[str, int],
+    cards_by_id: dict[str, dict],
+    theme: str,
+    limit: int = 20,
+) -> None:
+    matches = []
+
+    for oracle_id in collection:
+        card = cards_by_id.get(oracle_id)
+
+        if card is None or theme not in card.get("themes", []):
+            continue
+
+        searchable_text = " ".join((
+            card.get("type_line", ""),
+            card.get("oracle_text", ""),
+            *card.get("keywords", []),
+        )).casefold()
+
+        matched_triggers = [
+            trigger
+            for trigger in THEME_RULES[theme]
+            if trigger in searchable_text
+        ]
+
+        matches.append((card["name"], matched_triggers))
+
+    for name, triggers in sorted(matches)[:limit]:
+        print(f"{name}: {', '.join(triggers)}")
+
+
 
 
 def calculate_theme_scores(
@@ -40,7 +76,12 @@ def main()-> None:
 
     print(theme_scores)
 
-
+    print_theme_matches(
+    collection,
+    cards_by_id,
+    theme="aristocrats",
+    limit=20,
+)
 
 
 if __name__ == "__main__":
