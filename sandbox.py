@@ -79,7 +79,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
-    card_name = " ".join(args.card_name).strip()
+    print(args)
+    card_name = " ".join(args.card_name)
+    print(card_name)
 
     if not card_name:
         print("Card name cannot be empty.", file=sys.stderr)

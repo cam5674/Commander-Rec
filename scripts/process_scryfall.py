@@ -356,6 +356,7 @@ def normalize_card(card: dict[str, Any]) -> dict[str, Any]:
             type_line=type_line,
             keywords=keywords,
         ),
+        "edhrec_rank": card.get("edhrec_rank"),
         "image": get_image_url(card),
         "faces": normalize_faces(card),
     }

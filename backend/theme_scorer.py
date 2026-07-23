@@ -65,6 +65,27 @@ def calculate_theme_scores(
     return dict(scores)
 
 
+def get_commanders(
+        collection: dict[str, int], 
+        cards_by_id: dict[str, dict[str, Any]],
+        top_themes: list,
+        ) ->dict[str, int]:
+
+
+    for oracle_id in collection:
+        card = cards_by_id.get(oracle_id)
+
+        if card is None or card.get("commander_eligible") is False:
+            continue
+
+        else:
+            if any(item in top_themes for item in card.get("themes")) and card.get("edhrec_rank") < 15000:
+                print(f'Name: {card.get("name")} Themes: {card.get("themes")}')
+            
+
+        
+    
+
 
 def main()-> None:
     name_to_id = load_name_to_id()
@@ -76,12 +97,19 @@ def main()-> None:
 
     print(theme_scores)
 
+    # add this to the calculate function?
+    top_5_themes = sorted(theme_scores, key=theme_scores.get, reverse=True)[:5]
+    print(top_5_themes)
+
+
     print_theme_matches(
     collection,
     cards_by_id,
     theme="aristocrats",
     limit=20,
 )
+
+    get_commanders(collection, cards_by_id, top_5_themes)
 
 
 if __name__ == "__main__":
