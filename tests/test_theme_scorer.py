@@ -70,6 +70,85 @@ class ThemeScorerTests(unittest.TestCase):
             },
         )
 
+    def test_empty_collection_returns_empty_scores(self) -> None:
+        scores = calculate_theme_scores({}, self.cards_by_id)
+
+        self.assertEqual(scores, {})
+
+    def test_multiple_themes(self) -> None:
+        self.collection["oracle-all-themes"] = 1
+        self.cards_by_id["oracle-graveyard-card"]["themes"] = [
+            "graveyard",
+            "reanimator",
+            "aristocrats",
+            "card_draw",
+        ]
+        self.cards_by_id["oracle-all-themes"] = {
+            "themes": [
+                "wheels",
+                "aristocrats",
+                "lands",
+                "card_draw",
+                "spellslinger",
+                "plus_one_counters",
+                "lifegain",
+                "artifacts",
+                "tokens",
+                "sacrifice",
+                "graveyard",
+                "reanimator",
+            ]
+        }
+
+        scores = calculate_theme_scores(
+            self.collection,
+            self.cards_by_id,
+        )
+
+        self.assertEqual(
+            scores,
+            {
+                "tokens": 2,
+                "graveyard": 2,
+                "reanimator": 3,
+                "artifacts": 2,
+                "sacrifice": 2,
+                "lifegain": 1,
+                "plus_one_counters": 1,
+                "spellslinger": 1,
+                "aristocrats": 2,
+                "wheels": 1,
+                "card_draw": 3,
+                "lands": 1,
+            },
+        )
+
+    def test_card_with_no_theme(self) -> None:
+        self.collection["oracle-no_theme"] = 3
+        self.cards_by_id["oracle-no_theme"] = {
+            "themes": [],
+        }
+
+        scores = calculate_theme_scores(self.collection, self.cards_by_id)
+
+        self.assertEqual(
+            scores,
+            {
+                "tokens": 1,
+                "graveyard": 1,
+                "reanimator": 2,
+                "artifacts": 1,
+                "sacrifice": 1,
+                "card_draw": 1,
+            },
+        )
+
+    def test_empty_collection_and_cards_by_id(self) -> None:
+        collection, cards_by_id = {}, {}
+
+        scores = calculate_theme_scores(collection, cards_by_id)
+
+        self.assertEqual(scores, {})
 
 if __name__ == "__main__":
     unittest.main()
