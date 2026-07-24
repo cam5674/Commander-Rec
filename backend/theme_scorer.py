@@ -11,7 +11,7 @@ from scripts.process_scryfall import THEME_RULES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = PROJECT_ROOT / "data" / "raw" / "test_collection.csv"
-
+COLOR_ORDER = "WUBRG"
 
 
 def print_theme_matches(
@@ -46,6 +46,41 @@ def print_theme_matches(
         print(f"{name}: {', '.join(triggers)}")
 
 
+def normalize_color_identity(
+        colors: list[str]
+        )->str:
+    color_set = set(colors or [])
+
+
+    colors = []
+
+    for color in COLOR_ORDER:
+        if color in color_set:
+            colors.append(color)
+
+    return "".join(colors)
+
+
+
+def calculate_color_identity_counts(
+        collection: dict[str,int],
+        cards_by_id: dict[str, dict[str, Any]],
+        )-> dict[str,int]:
+
+        color_identity_counts = defaultdict(int)
+
+        # ignore quantity for theme scorer - possibly keep another dict for total?
+        for oracle_id in collection:
+            card = cards_by_id.get(oracle_id)
+
+            if card is None:
+                continue
+
+            identity = normalize_color_identity(card.get("color_identity", []))
+
+            color_identity_counts[identity] += 1
+
+        return dict(color_identity_counts)
 
 
 def calculate_theme_scores(
@@ -169,15 +204,15 @@ def main()-> None:
    # theme="aristocrats",
    # limit=20,
 #)
-
+    print(calculate_color_identity_counts(collection, cards_by_id))
     candidates = get_commander_candidates(collection, cards_by_id, top_5_themes)
 
     top_n = rank_commanders(candidates, theme_scores, 10)
-    print(top_n)
+   # print(top_n)
 
-    for dict in top_n:
-        for key, value in dict.items():
-            print(f"{key}: {value}")
+   # for dict in top_n:
+    #    for key, value in dict.items():
+     #       print(f"{key}: {value}")
 
 if __name__ == "__main__":
     main()
