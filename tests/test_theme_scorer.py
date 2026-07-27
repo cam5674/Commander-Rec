@@ -1,6 +1,6 @@
 import unittest
 
-from backend.theme_scorer import calculate_theme_scores
+from backend.theme_scorer import calculate_theme_scores, calculate_color_identity_counts, normalize_color_identity
 
 
 class ThemeScorerTests(unittest.TestCase):
@@ -19,6 +19,7 @@ class ThemeScorerTests(unittest.TestCase):
                 "oracle_text": "Create a 1/1 creature token.",
                 "keywords": [],
                 "themes": ["tokens", "reanimator"],
+                "color_identity": ["W", "G"],
             },
             "oracle-graveyard-card": {
                 "name": "Test Reanimator",
@@ -29,6 +30,7 @@ class ThemeScorerTests(unittest.TestCase):
                 ),
                 "keywords": [],
                 "themes": ["graveyard", "reanimator"],
+                "color_identity": ["B"],
             },
             "oracle-artifact-engine": {
                 "name": "Test Artifact Engine",
@@ -42,6 +44,7 @@ class ThemeScorerTests(unittest.TestCase):
                     "sacrifice",
                     "card_draw",
                 ],
+                "color_identity": [],
             },
             "oracle-untagged-card": {
                 "name": "Test Vanilla Creature",
@@ -49,6 +52,7 @@ class ThemeScorerTests(unittest.TestCase):
                 "oracle_text": "",
                 "keywords": [],
                 "themes": [],
+                "color_identity": ["G"],
             },
         }
 
@@ -149,6 +153,28 @@ class ThemeScorerTests(unittest.TestCase):
         scores = calculate_theme_scores(collection, cards_by_id)
 
         self.assertEqual(scores, {})
+
+    def test_color_identity_count(self)-> None:
+ 
+        count = calculate_color_identity_counts(self.collection, self.cards_by_id)
+
+        self.assertEqual(
+            count,
+            {
+                "B": 1,
+                "WG": 1,
+                "G": 1,
+                "":1,
+            }
+            )
+
+    def test_normalizes_color_identity_order(self) -> None:
+        self.assertEqual(
+            normalize_color_identity(["G", "W", "G"]),
+            "WG",
+        )
+
+
 
 if __name__ == "__main__":
     unittest.main()
