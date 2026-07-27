@@ -12,6 +12,17 @@ from scripts.process_scryfall import THEME_RULES
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = PROJECT_ROOT / "data" / "raw" / "test_collection.csv"
 COLOR_ORDER = "WUBRG"
+THEME_WEIGHT = 0.75
+COLOR_WEIGHT = 0.20
+POPULARITY_WEIGHT = 0.05
+MAX_EDHREC_RANK = 15_000
+PAIRING_KEYWORDS = {
+    "partner",
+    "partner with",
+    "choose a background",
+    "doctor's companion",
+    "friends forever",
+}
 
 
 def print_theme_matches(
@@ -82,13 +93,16 @@ def calculate_color_identity_counts(
 
     return dict(color_identity_counts)
 
-def calculate_color_average(
+def calculate_color_compatibility_ratio(
     commander: dict[str, Any],
     collection: dict[str, int],
     cards_by_id: dict[str, dict[str, Any]],
+    relevant_themes: list[str] | None = None,
 ) -> float:
+    """Return the share of relevant, unique cards legal in the commander's colors."""
     commander_colors = set(commander.get("color_identity") or [])
     commander_id = commander.get("oracle_id")
+    relevant_theme_set = set(relevant_themes or [])
     compatible_cards = 0
     evaluated_cards = 0
 
@@ -99,6 +113,12 @@ def calculate_color_average(
         card = cards_by_id.get(oracle_id)
 
         if card is None:
+            continue
+
+        if (
+            relevant_theme_set
+            and not relevant_theme_set.intersection(card.get("themes", []))
+        ):
             continue
 
         card_colors = set(card.get("color_identity") or [])
@@ -114,7 +134,7 @@ def calculate_theme_scores(
     collection: dict[str, int],
     cards_by_id: dict[str, dict[str, Any]],
     ) -> dict[str, int]:
-
+    """Count each owned Oracle ID once for every assigned theme."""
     scores = defaultdict(int)
 
 
@@ -131,18 +151,36 @@ def calculate_theme_scores(
     return dict(scores)
 
 
-def get_commander_candidates(
-        collection: dict[str, int],
-        cards_by_id: dict[str, dict[str, Any]],
-        top_themes: list,
-        ) -> list [dict[str, Any]]:
+def requires_pairing(card: dict[str, Any]) -> bool:
+    """Return whether a commander needs a partner or Background pairing."""
+    keywords = {
+        str(keyword).casefold()
+        for keyword in card.get("keywords", [])
+    }
+    type_line = str(card.get("type_line") or "").casefold()
 
+    return (
+        bool(keywords & PAIRING_KEYWORDS)
+        or "background" in type_line
+    )
+
+
+def get_commander_candidates(
+    collection: dict[str, int],
+    cards_by_id: dict[str, dict[str, Any]],
+    top_themes: list[str],
+) -> list[dict[str, Any]]:
+    """Select owned, eligible commanders matching at least one top theme."""
     candidates = []
 
     for oracle_id in collection:
         card = cards_by_id.get(oracle_id)
 
-        if card is None or not card.get("commander_eligible", False):
+        if (
+            card is None
+            or not card.get("commander_eligible", False)
+            or requires_pairing(card)
+        ):
             continue
 
         matching_themes = set(card.get("themes", [])) & set(top_themes)
@@ -166,52 +204,72 @@ def get_commander_candidates(
 
 
 def rank_commanders(
-        candidates: list[dict[str, Any]],
-        theme_scores: dict[str, int],
-        top_n: int = 5,
-        ) -> list[dict[str, Any]]:
+    candidates: list[dict[str, Any]],
+    theme_scores: dict[str, int],
+    top_themes: list[str],
+    collection: dict[str, int],
+    cards_by_id: dict[str, dict[str, Any]],
+    top_n: int = 5,
+) -> list[dict[str, Any]]:
+    """Rank commanders by weighted theme fit, color support, and popularity."""
+    ranked_commanders = []
+    top_theme_total = sum(
+        theme_scores.get(theme, 0)
+        for theme in top_themes
+    )
 
-
-        ranked_commanders = []
-
-        for candidate in candidates:
-
-            theme_match_score = 0
-
-            for theme in candidate["matching_themes"]:
-                theme_match_score += theme_scores.get(theme, 0)
-
-            edhrec_rank = candidate["edhrec_rank"]
-
-
-            # experiment with rank(15000)
-            popularity_score = (
-                max(0, 15000 - edhrec_rank) / 15000
-                if edhrec_rank is not None else
-                0
-            )
-
-            final_score = theme_match_score + popularity_score
-
-
-            ranked_commanders.append(
-                {
-                    **candidate,
-                    "theme_match_score": theme_match_score,
-                    "popularity_score": popularity_score,
-                    "final_score": final_score
-                }
-            )
-
-        ranked_commanders.sort(
-                key=lambda commander: (
-                    -commander["final_score"],
-                    commander["edhrec_rank"] or float("inf"),
-                    commander["name"],
-                            )
+    for candidate in candidates:
+        theme_match_score = sum(
+            theme_scores.get(theme, 0)
+            for theme in candidate["matching_themes"]
+        )
+        theme_ratio = (
+            theme_match_score / top_theme_total
+            if top_theme_total
+            else 0.0
+        )
+        color_ratio = calculate_color_compatibility_ratio(
+            candidate,
+            collection,
+            cards_by_id,
+            relevant_themes=candidate["matching_themes"],
+        )
+        edhrec_rank = candidate["edhrec_rank"]
+        popularity_score = (
+            max(0, MAX_EDHREC_RANK - edhrec_rank) / MAX_EDHREC_RANK
+            if edhrec_rank is not None
+            else 0.0
+        )
+        final_score = (
+            theme_ratio * THEME_WEIGHT
+            + color_ratio * COLOR_WEIGHT
+            + popularity_score * POPULARITY_WEIGHT
         )
 
-        return ranked_commanders[:top_n]
+        ranked_commanders.append(
+            {
+                **candidate,
+                "theme_match_score": theme_match_score,
+                "theme_ratio": theme_ratio,
+                "color_ratio": color_ratio,
+                "popularity_score": popularity_score,
+                "final_score": final_score,
+            }
+        )
+
+    ranked_commanders.sort(
+        key=lambda commander: (
+            -commander["final_score"],
+            (
+                commander["edhrec_rank"]
+                if commander["edhrec_rank"] is not None
+                else float("inf")
+            ),
+            commander["name"],
+        )
+    )
+
+    return ranked_commanders[:top_n]
 
 
 def main()-> None:
@@ -235,12 +293,19 @@ def main()-> None:
     print(calculate_color_identity_counts(collection, cards_by_id))
     candidates = get_commander_candidates(collection, cards_by_id, top_5_themes)
 
-    top_n = rank_commanders(candidates, theme_scores, 10)
-   # print(top_n)
+    top_n = rank_commanders(
+        candidates,
+        theme_scores,
+        top_5_themes,
+        collection,
+        cards_by_id,
+        top_n=10,
+    )
+    print(top_n)
 
-   # for dict in top_n:
-    #    for key, value in dict.items():
-     #       print(f"{key}: {value}")
+    for dict in top_n:
+        for key, value in dict.items():
+            print(f"{key}: {value}")
 
 if __name__ == "__main__":
     main()

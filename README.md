@@ -137,6 +137,8 @@ Example explanation:
 - Automated weekly Scryfall data refresh
 - Commander detail pages
 - Deck-building suggestions for missing support cards
+- Partner commander recommendations that score valid pairs, combined color
+  identity, shared themes, and restricted pairing mechanics
 
 ## Cost and Performance Targets
 
