@@ -1,6 +1,11 @@
 import unittest
 
-from backend.theme_scorer import calculate_theme_scores, calculate_color_identity_counts, normalize_color_identity
+from backend.theme_scorer import (
+    calculate_color_average,
+    calculate_color_identity_counts,
+    calculate_theme_scores,
+    normalize_color_identity,
+)
 
 
 class ThemeScorerTests(unittest.TestCase):
@@ -174,6 +179,58 @@ class ThemeScorerTests(unittest.TestCase):
             "WG",
         )
 
+
+
+    def test_color_average_uses_unique_compatible_cards(self) -> None:
+        commander = {
+            "oracle_id": "oracle-token-maker",
+            "color_identity": ["W", "G"],
+        }
+
+        average = calculate_color_average(
+            commander,
+            self.collection,
+            self.cards_by_id,
+        )
+
+        self.assertEqual(average, 2 / 3)
+
+    def test_five_color_commander_accepts_every_color_identity(self) -> None:
+        commander = {
+            "oracle_id": "oracle-five-color-commander",
+            "color_identity": ["W", "U", "B", "R", "G"],
+        }
+
+        average = calculate_color_average(
+            commander,
+            self.collection,
+            self.cards_by_id,
+        )
+
+        self.assertEqual(average, 1.0)
+
+    def test_color_average_returns_zero_without_evaluable_cards(self) -> None:
+        commander = {
+            "oracle_id": "oracle-only-commander",
+            "color_identity": ["G"],
+        }
+        collection = {
+            "oracle-only-commander": 1,
+            "oracle-missing-card": 1,
+        }
+        cards_by_id = {
+            "oracle-only-commander": {
+                "color_identity": ["G"],
+            },
+        }
+
+        average = calculate_color_average(
+            commander,
+            collection,
+            cards_by_id,
+        )
+
+        self.assertEqual(average, 0.0)
 
 
 if __name__ == "__main__":

@@ -63,25 +63,52 @@ def normalize_color_identity(
 
 
 def calculate_color_identity_counts(
-        collection: dict[str,int],
-        cards_by_id: dict[str, dict[str, Any]],
-        )-> dict[str,int]:
+    collection: dict[str,int],
+    cards_by_id: dict[str, dict[str, Any]],
+    )-> dict[str,int]:
 
-        color_identity_counts = defaultdict(int)
+    color_identity_counts = defaultdict(int)
 
-        # ignore quantity for theme scorer - possibly keep another dict for total?
-        for oracle_id in collection:
-            card = cards_by_id.get(oracle_id)
+    # ignore quantity for theme scorer - possibly keep another dict for total?
+    for oracle_id in collection:
+        card = cards_by_id.get(oracle_id)
 
-            if card is None:
-                continue
+        if card is None:
+            continue
 
-            identity = normalize_color_identity(card.get("color_identity", []))
+        identity = normalize_color_identity(card.get("color_identity", []))
 
-            color_identity_counts[identity] += 1
+        color_identity_counts[identity] += 1
 
-        return dict(color_identity_counts)
+    return dict(color_identity_counts)
 
+def calculate_color_average(
+    commander: dict[str, Any],
+    collection: dict[str, int],
+    cards_by_id: dict[str, dict[str, Any]],
+) -> float:
+    commander_colors = set(commander.get("color_identity") or [])
+    commander_id = commander.get("oracle_id")
+    compatible_cards = 0
+    evaluated_cards = 0
+
+    for oracle_id in collection:
+        if oracle_id == commander_id:
+            continue
+
+        card = cards_by_id.get(oracle_id)
+
+        if card is None:
+            continue
+
+        card_colors = set(card.get("color_identity") or [])
+
+        if card_colors.issubset(commander_colors):
+            compatible_cards += 1
+
+        evaluated_cards += 1
+
+    return compatible_cards / evaluated_cards if evaluated_cards else 0.0
 
 def calculate_theme_scores(
     collection: dict[str, int],
@@ -130,6 +157,7 @@ def get_commander_candidates(
                 "themes": card.get("themes", []),
                 "matching_themes": sorted(matching_themes),
                 "edhrec_rank": card.get("edhrec_rank"),
+                "color_identity": card.get("color_identity", []),
             }
 
         )
