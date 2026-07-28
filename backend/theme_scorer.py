@@ -6,7 +6,7 @@ from backend.csv_parser import parse_collection
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
-from .data_loader import load_name_to_id, load_cards_by_id
+from .data_loader import get_cards_by_id, get_name_to_id
 from scripts.process_scryfall import THEME_RULES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -320,8 +320,8 @@ def recommend_commanders(
 
 
 def main()-> None:
-    name_to_id = load_name_to_id()
-    cards_by_id = load_cards_by_id()
+    name_to_id = get_name_to_id()
+    cards_by_id = get_cards_by_id()
 
     collection, unmatched_names = parse_collection(
         CSV_PATH, name_to_id

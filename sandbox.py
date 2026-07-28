@@ -80,7 +80,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 def main(argv: list[str] | None = None) -> int:
     args = parse_args(argv)
     print(args)
-    card_name = " ".join(args.card_name)
+    card_name = " ".join(args.card_name).strip()
     print(card_name)
 
     if not card_name:
