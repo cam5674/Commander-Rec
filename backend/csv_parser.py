@@ -1,6 +1,9 @@
 import csv
 from collections import defaultdict
+from io import StringIO
 from pathlib import Path
+from typing import TextIO
+
 from .data_loader import load_name_to_id
 from scripts.process_scryfall import normalize_lookup_name
 
@@ -50,59 +53,90 @@ def resolve_csv_columns(fieldnames: list[str] | None) -> tuple[str, str]:
     return name_column, quantity_column
 
 
-def parse_collection(
-    csv_path: Path,
+def parse_collection_stream(
+    csv_file: TextIO,
     name_to_id: dict[str, str],
     row_limit: int | None = None,
 ) -> tuple[dict[str, int], list[str]]:
     collection: defaultdict[str, int] = defaultdict(int)
     unmatched_names: list[str] = []
 
+    reader = csv.DictReader(csv_file)
+    name_column, quantity_column = resolve_csv_columns(reader.fieldnames)
+
+    for row_number, row in enumerate(reader, start=2):
+        if row_limit is not None and row_number > row_limit + 1:
+            break
+
+        quantity_text = (row.get(quantity_column) or "").strip()
+        name = (row.get(name_column) or "").strip()
+
+        if not name:
+            print(f"Skipping row {row_number}: card name is missing.")
+            continue
+
+        try:
+            quantity = int(quantity_text)
+        except ValueError:
+            print(
+                f"Skipping row {row_number}: "
+                f"invalid quantity {quantity_text!r}."
+            )
+            continue
+
+        if quantity <= 0:
+            print(
+                f"Skipping row {row_number}: "
+                "quantity must be greater than zero."
+            )
+            continue
+
+        normalized_name = normalize_lookup_name(name)
+        oracle_id = name_to_id.get(normalized_name)
+
+        if oracle_id is None:
+            unmatched_names.append(name)
+            continue
+
+        collection[oracle_id] += quantity
+
+    return dict(collection), unmatched_names
+
+
+def parse_collection(
+    csv_path: Path,
+    name_to_id: dict[str, str],
+    row_limit: int | None = None,
+) -> tuple[dict[str, int], list[str]]:
     with csv_path.open(
         mode="r",
         newline="",
         encoding="utf-8-sig",
-    ) as file:
-        reader = csv.DictReader(file)
-        name_column, quantity_column = resolve_csv_columns(reader.fieldnames)
+    ) as csv_file:
+        return parse_collection_stream(
+            csv_file,
+            name_to_id,
+            row_limit=row_limit,
+        )
 
-        for row_number, row in enumerate(reader, start=2):
-            if row_limit is not None and row_number > row_limit + 1:
-                break
 
-            quantity_text = (row.get(quantity_column) or "").strip()
-            name = (row.get(name_column) or "").strip()
+def parse_collection_bytes(
+    csv_data: bytes,
+    name_to_id: dict[str, str],
+    row_limit: int | None = None,
+) -> tuple[dict[str, int], list[str]]:
+    try:
+        csv_text = csv_data.decode("utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise ValueError(
+            "The collection CSV must use UTF-8 encoding."
+        ) from error
 
-            if not name:
-                print(f"Skipping row {row_number}: card name is missing.")
-                continue
-
-            try:
-                quantity = int(quantity_text)
-            except ValueError:
-                print(
-                    f"Skipping row {row_number}: "
-                    f"invalid quantity {quantity_text!r}."
-                )
-                continue
-
-            if quantity <= 0:
-                print(
-                    f"Skipping row {row_number}: "
-                    "quantity must be greater than zero."
-                )
-                continue
-
-            normalized_name = normalize_lookup_name(name)
-            oracle_id = name_to_id.get(normalized_name)
-
-            if oracle_id is None:
-                unmatched_names.append(name)
-                continue
-
-            collection[oracle_id] += quantity
-
-    return dict(collection), unmatched_names
+    return parse_collection_stream(
+        StringIO(csv_text, newline=""),
+        name_to_id,
+        row_limit=row_limit,
+    )
 
 
 def main() -> None:

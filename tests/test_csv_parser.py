@@ -8,7 +8,11 @@ from pathlib import Path
 
 
 
-from backend.csv_parser import parse_collection
+from backend.csv_parser import (
+    parse_collection,
+    parse_collection_bytes,
+    parse_collection_stream,
+)
 from backend.data_loader import load_name_to_id
 
 class CSVParserTests(unittest.TestCase):
@@ -181,6 +185,37 @@ class CSVParserTests(unittest.TestCase):
 
         self.assertEqual(collection, {"oracle-sol-ring": 1})
         self.assertEqual(unmatched, [])
+
+    def test_text_stream_parses(self) -> None:
+        name_to_id = {"sol ring": "oracle-sol-ring"}
+        csv_file = StringIO("Count,Name\n2,Sol Ring\n", newline="")
+
+        collection, unmatched = parse_collection_stream(
+            csv_file,
+            name_to_id,
+        )
+
+        self.assertEqual(collection, {"oracle-sol-ring": 2})
+        self.assertEqual(unmatched, [])
+
+    def test_utf8_bom_bytes_parse(self) -> None:
+        name_to_id = {"sol ring": "oracle-sol-ring"}
+        csv_data = "Count,Name\n1,Sol Ring\n".encode("utf-8-sig")
+
+        collection, unmatched = parse_collection_bytes(
+            csv_data,
+            name_to_id,
+        )
+
+        self.assertEqual(collection, {"oracle-sol-ring": 1})
+        self.assertEqual(unmatched, [])
+
+    def test_invalid_utf8_bytes_raise_useful_error(self) -> None:
+        with self.assertRaisesRegex(
+            ValueError,
+            "collection CSV must use UTF-8 encoding",
+        ):
+            parse_collection_bytes(b"\xff\xfe\x00", {})
 
     def test_empty_csv_raises_expected_error(self) -> None:
         csv_path = self.write_csv("")
