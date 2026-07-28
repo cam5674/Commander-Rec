@@ -317,12 +317,69 @@ class CommanderRankingTests(unittest.TestCase):
         candidates = get_commander_candidates(
             collection,
             cards_by_id,
+            list(cards_by_id),
             ["tokens"],
         )
 
         self.assertEqual(
             [candidate["name"] for candidate in candidates],
             ["Standalone Commander"],
+        )
+
+    def test_unowned_commanders_are_included_with_ownership_flag(self) -> None:
+        collection = {
+            "oracle-owned-commander": 1,
+            "oracle-token-support": 1,
+        }
+        cards_by_id = {
+            "oracle-owned-commander": {
+                "name": "Owned Commander",
+                "commander_eligible": True,
+                "themes": ["tokens"],
+                "keywords": [],
+                "type_line": "Legendary Creature",
+                "edhrec_rank": 100,
+                "color_identity": ["W"],
+            },
+            "oracle-unowned-commander": {
+                "name": "Unowned Commander",
+                "commander_eligible": True,
+                "themes": ["tokens"],
+                "keywords": [],
+                "type_line": "Legendary Creature",
+                "edhrec_rank": 200,
+                "color_identity": ["W"],
+            },
+            "oracle-token-support": {
+                "name": "Token Support",
+                "commander_eligible": False,
+                "themes": ["tokens"],
+                "keywords": [],
+                "type_line": "Sorcery",
+                "edhrec_rank": None,
+                "color_identity": ["W"],
+            },
+        }
+
+        candidates = get_commander_candidates(
+            collection,
+            cards_by_id,
+            [
+                "oracle-owned-commander",
+                "oracle-unowned-commander",
+            ],
+            ["tokens"],
+        )
+
+        self.assertEqual(
+            {
+                candidate["name"]: candidate["owned"]
+                for candidate in candidates
+            },
+            {
+                "Owned Commander": True,
+                "Unowned Commander": False,
+            },
         )
 
     def test_theme_fit_outweighs_five_color_compatibility(self) -> None:

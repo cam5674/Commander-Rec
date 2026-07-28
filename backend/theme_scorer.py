@@ -6,7 +6,7 @@ from backend.csv_parser import parse_collection
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
-from .data_loader import get_cards_by_id, get_name_to_id
+from .data_loader import get_cards_by_id, get_commanders, get_name_to_id
 from scripts.process_scryfall import THEME_RULES
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -168,12 +168,13 @@ def requires_pairing(card: dict[str, Any]) -> bool:
 def get_commander_candidates(
     collection: dict[str, int],
     cards_by_id: dict[str, dict[str, Any]],
+    commander_ids: list[str],
     top_themes: list[str],
 ) -> list[dict[str, Any]]:
-    """Select owned, eligible commanders matching at least one top theme."""
+    """Select eligible commanders matching at least one top theme."""
     candidates = []
 
-    for oracle_id in collection:
+    for oracle_id in commander_ids:
         card = cards_by_id.get(oracle_id)
 
         if (
@@ -196,6 +197,7 @@ def get_commander_candidates(
                 "matching_themes": sorted(matching_themes),
                 "edhrec_rank": card.get("edhrec_rank"),
                 "color_identity": card.get("color_identity", []),
+                "owned": oracle_id in collection,
             }
 
         )
@@ -274,8 +276,9 @@ def rank_commanders(
 def recommend_commanders(
     collection: dict[str, int],
     cards_by_id: dict[str, dict[str, Any]],
+    commander_ids: list[str],
     *,
-    top_n: int = 5,
+    top_n: int = 10,
     theme_limit: int = 5,
 ) -> dict[str, Any]:
     """Return explainable commander recommendations for a collection."""
@@ -298,6 +301,7 @@ def recommend_commanders(
     candidates = get_commander_candidates(
         collection,
         cards_by_id,
+        commander_ids,
         top_themes,
     )
 
@@ -322,6 +326,7 @@ def recommend_commanders(
 def main()-> None:
     name_to_id = get_name_to_id()
     cards_by_id = get_cards_by_id()
+    commander_ids = get_commanders()
 
     collection, unmatched_names = parse_collection(
         CSV_PATH, name_to_id
@@ -330,7 +335,8 @@ def main()-> None:
     results = recommend_commanders(
         collection,
         cards_by_id,
-        top_n=5,
+        commander_ids,
+        top_n=10,
     )
 
     results["unmatched_names"] = unmatched_names
