@@ -1,7 +1,7 @@
 #TODO: implement color-identity compatibility (can see the most common color pairings in the collection)
 
 
-
+from pprint import pprint
 from backend.csv_parser import parse_collection
 from collections import defaultdict
 from pathlib import Path
@@ -271,41 +271,71 @@ def rank_commanders(
 
     return ranked_commanders[:top_n]
 
+def recommend_commanders(
+    collection: dict[str, int],
+    cards_by_id: dict[str, dict[str, Any]],
+    *,
+    top_n: int = 5,
+    theme_limit: int = 5,
+) -> dict[str, Any]:
+    """Return explainable commander recommendations for a collection."""
+    if top_n <= 0:
+        raise ValueError("top_n must be greater than zero.")
+
+    if theme_limit <= 0:
+        raise ValueError("theme_limit must be greater than zero.")
+
+    theme_scores = calculate_theme_scores(collection, cards_by_id)
+
+    top_themes = [
+        theme
+        for theme, _ in sorted(
+            theme_scores.items(),
+            key=lambda item: (-item[1], item[0]),
+        )[:theme_limit]
+    ]
+
+    candidates = get_commander_candidates(
+        collection,
+        cards_by_id,
+        top_themes,
+    )
+
+    recommendations = rank_commanders(
+        candidates,
+        theme_scores,
+        top_themes,
+        collection,
+        cards_by_id,
+        top_n=top_n,
+    )
+
+    return {
+        "unique_cards": len(collection),
+        "total_cards": sum(collection.values()),
+        "theme_scores": theme_scores,
+        "top_themes": top_themes,
+        "recommendations": recommendations,
+    }
+
 
 def main()-> None:
     name_to_id = load_name_to_id()
     cards_by_id = load_cards_by_id()
 
-    collection, unmatched = parse_collection(CSV_PATH, name_to_id)
+    collection, unmatched_names = parse_collection(
+        CSV_PATH, name_to_id
+        )
 
-    theme_scores = calculate_theme_scores(collection, cards_by_id)
-
-
-    # add this to the calculate function?
-    top_5_themes = sorted(theme_scores, key=theme_scores.get, reverse=True)[:5]
-
-   # print_theme_matches(
-   # collection,
-   # cards_by_id,
-   # theme="aristocrats",
-   # limit=20,
-#)
-    print(calculate_color_identity_counts(collection, cards_by_id))
-    candidates = get_commander_candidates(collection, cards_by_id, top_5_themes)
-
-    top_n = rank_commanders(
-        candidates,
-        theme_scores,
-        top_5_themes,
+    results = recommend_commanders(
         collection,
         cards_by_id,
-        top_n=10,
+        top_n=5,
     )
-    print(top_n)
 
-    for dict in top_n:
-        for key, value in dict.items():
-            print(f"{key}: {value}")
+    results["unmatched_names"] = unmatched_names
+    
+    pprint(results)
 
 if __name__ == "__main__":
     main()
