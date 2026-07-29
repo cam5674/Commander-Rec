@@ -150,6 +150,36 @@ def calculate_theme_scores(
 
     return dict(scores)
 
+def get_score_breakdown(
+    theme_ratio: float,
+    color_ratio: float,
+    edhrec_rank: int | None,
+) -> dict[str, float]:
+    popularity_score = (
+        max(0, MAX_EDHREC_RANK - edhrec_rank) / MAX_EDHREC_RANK
+        if edhrec_rank is not None
+        else 0.0
+    )
+
+    theme_contribution = theme_ratio * THEME_WEIGHT
+    color_contribution = color_ratio * COLOR_WEIGHT
+    popularity_contribution = popularity_score * POPULARITY_WEIGHT
+    final_score = (
+        theme_contribution
+        + color_contribution
+        + popularity_contribution
+    )
+
+    return {
+        "theme_ratio": round(theme_ratio, 4),
+        "theme_contribution": round(theme_contribution, 4),
+        "color_ratio": round(color_ratio, 4),
+        "color_contribution": round(color_contribution, 4),
+        "popularity_score": round(popularity_score, 4),
+        "popularity_contribution": round(popularity_contribution, 4),
+        "final_score": round(final_score, 4),
+    }
+
 
 def requires_pairing(card: dict[str, Any]) -> bool:
     """Return whether a commander needs a partner or Background pairing."""
@@ -205,6 +235,7 @@ def get_commander_candidates(
     return candidates
 
 
+
 def rank_commanders(
     candidates: list[dict[str, Any]],
     theme_scores: dict[str, int],
@@ -236,32 +267,23 @@ def rank_commanders(
             cards_by_id,
             relevant_themes=candidate["matching_themes"],
         )
-        edhrec_rank = candidate["edhrec_rank"]
-        popularity_score = (
-            max(0, MAX_EDHREC_RANK - edhrec_rank) / MAX_EDHREC_RANK
-            if edhrec_rank is not None
-            else 0.0
-        )
-        final_score = (
-            theme_ratio * THEME_WEIGHT
-            + color_ratio * COLOR_WEIGHT
-            + popularity_score * POPULARITY_WEIGHT
+        score_breakdown = get_score_breakdown(
+            theme_ratio,
+            color_ratio,
+            candidate["edhrec_rank"],
         )
 
         ranked_commanders.append(
             {
                 **candidate,
                 "theme_match_score": theme_match_score,
-                "theme_ratio": theme_ratio,
-                "color_ratio": color_ratio,
-                "popularity_score": popularity_score,
-                "final_score": final_score,
+                "score_breakdown": score_breakdown,
             }
         )
 
     ranked_commanders.sort(
         key=lambda commander: (
-            -commander["final_score"],
+            -commander["score_breakdown"]["final_score"],
             (
                 commander["edhrec_rank"]
                 if commander["edhrec_rank"] is not None

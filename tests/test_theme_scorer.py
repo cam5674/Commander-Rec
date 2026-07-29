@@ -5,6 +5,7 @@ from backend.theme_scorer import (
     calculate_color_identity_counts,
     calculate_theme_scores,
     get_commander_candidates,
+    get_score_breakdown,
     normalize_color_identity,
     rank_commanders,
 )
@@ -265,6 +266,26 @@ class ThemeScorerTests(unittest.TestCase):
 
 
 class CommanderRankingTests(unittest.TestCase):
+    def test_score_breakdown_rounds_values_to_four_places(self) -> None:
+        breakdown = get_score_breakdown(
+            theme_ratio=2 / 3,
+            color_ratio=1 / 3,
+            edhrec_rank=1_234,
+        )
+
+        self.assertEqual(
+            breakdown,
+            {
+                "theme_ratio": 0.6667,
+                "theme_contribution": 0.5,
+                "color_ratio": 0.3333,
+                "color_contribution": 0.0667,
+                "popularity_score": 0.9177,
+                "popularity_contribution": 0.0459,
+                "final_score": 0.6126,
+            },
+        )
+
     def test_pairing_commanders_are_excluded_from_mvp_candidates(self) -> None:
         def make_commander(
             name: str,
@@ -423,9 +444,18 @@ class CommanderRankingTests(unittest.TestCase):
         )
 
         self.assertEqual(ranked[0]["name"], "Theme Focused")
-        self.assertEqual(ranked[0]["theme_ratio"], 1.0)
-        self.assertEqual(ranked[0]["color_ratio"], 0.0)
-        self.assertEqual(ranked[0]["final_score"], 0.75)
+        self.assertEqual(
+            ranked[0]["score_breakdown"]["theme_ratio"],
+            1.0,
+        )
+        self.assertEqual(
+            ranked[0]["score_breakdown"]["color_ratio"],
+            0.0,
+        )
+        self.assertEqual(
+            ranked[0]["score_breakdown"]["final_score"],
+            0.75,
+        )
 
     def test_color_ratio_breaks_equal_theme_fit(self) -> None:
         collection = {
