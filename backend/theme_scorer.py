@@ -193,13 +193,14 @@ def requires_pairing(card: dict[str, Any]) -> bool:
     )
 
 def get_theme_supporting_cards(
-        candidate_oracle_id: str,
-        theme: str,
-        collection: dict[str,int],
-        cards_by_id: dict[str,dict[str, Any]],
-        commander_colors: set[str],
-        limit: int = 5,
-)-> tuple[int, list[dict[str, Any]]]:
+    candidate_oracle_id: str,
+    theme: str,
+    collection: dict[str, int],
+    cards_by_id: dict[str, dict[str, Any]],
+    commander_colors: set[str],
+    limit: int = 5,
+) -> tuple[int, list[dict[str, Any]]]:
+    """Return the count and top owned cards supporting one theme."""
     supporting_cards = []
     for oracle_id, quantity in collection.items():
         if candidate_oracle_id == oracle_id:
@@ -278,6 +279,68 @@ def get_commander_candidates(
     return candidates
 
 
+def score_commander_candidate(
+    candidate: dict[str, Any],
+    theme_scores: dict[str, int],
+    top_theme_total: int,
+    collection: dict[str, int],
+    cards_by_id: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """Return a candidate with its theme, color, and popularity scores."""
+    theme_match_score = sum(
+        theme_scores.get(theme, 0)
+        for theme in candidate["matching_themes"]
+    )
+    theme_ratio = (
+        theme_match_score / top_theme_total
+        if top_theme_total
+        else 0.0
+    )
+    color_ratio = calculate_color_compatibility_ratio(
+        candidate,
+        collection,
+        cards_by_id,
+        relevant_themes=candidate["matching_themes"],
+    )
+
+    return {
+        **candidate,
+        "theme_match_score": theme_match_score,
+        "score_breakdown": get_score_breakdown(
+            theme_ratio,
+            color_ratio,
+            candidate["edhrec_rank"],
+        ),
+    }
+
+
+def build_commander_theme_support(
+    commander: dict[str, Any],
+    collection: dict[str, int],
+    cards_by_id: dict[str, dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """Build per-theme support evidence for a ranked commander."""
+    theme_support = []
+
+    for theme in commander["matching_themes"]:
+        supporting_card_count, example_cards = get_theme_supporting_cards(
+            candidate_oracle_id=commander["oracle_id"],
+            theme=theme,
+            collection=collection,
+            cards_by_id=cards_by_id,
+            commander_colors=set(commander["color_identity"]),
+        )
+
+        theme_support.append(
+            {
+                "theme": theme,
+                "supporting_card_count": supporting_card_count,
+                "example_cards": example_cards,
+            }
+        )
+
+    return theme_support
+
 
 def rank_commanders(
     candidates: list[dict[str, Any]],
@@ -287,42 +350,22 @@ def rank_commanders(
     cards_by_id: dict[str, dict[str, Any]],
     top_n: int = 5,
 ) -> list[dict[str, Any]]:
-    """Rank commanders by weighted theme fit, color support, and popularity."""
-    ranked_commanders = []
+    """Score, order, and enrich the top commander candidates."""
     top_theme_total = sum(
         theme_scores.get(theme, 0)
         for theme in top_themes
     )
 
-    for candidate in candidates:
-        theme_match_score = sum(
-            theme_scores.get(theme, 0)
-            for theme in candidate["matching_themes"]
-        )
-        theme_ratio = (
-            theme_match_score / top_theme_total
-            if top_theme_total
-            else 0.0
-        )
-        color_ratio = calculate_color_compatibility_ratio(
+    ranked_commanders = [
+        score_commander_candidate(
             candidate,
+            theme_scores,
+            top_theme_total,
             collection,
             cards_by_id,
-            relevant_themes=candidate["matching_themes"],
         )
-        score_breakdown = get_score_breakdown(
-            theme_ratio,
-            color_ratio,
-            candidate["edhrec_rank"],
-        )
-
-        ranked_commanders.append(
-            {
-                **candidate,
-                "theme_match_score": theme_match_score,
-                "score_breakdown": score_breakdown,
-            }
-        )
+        for candidate in candidates
+    ]
 
     ranked_commanders.sort(
         key=lambda commander: (
@@ -336,31 +379,17 @@ def rank_commanders(
         )
     )
 
-    top_ranked_commanders = ranked_commanders[:top_n]
-
-    for candidate in top_ranked_commanders:
-        theme_support = []
-
-        for theme in candidate["matching_themes"]:
-            supporting_card_count, example_cards = get_theme_supporting_cards(
-                candidate_oracle_id=candidate["oracle_id"],
-                theme=theme,
-                collection=collection,
-                cards_by_id=cards_by_id,
-                commander_colors=set(candidate["color_identity"]),
-            )
-
-            theme_support.append(
-                {
-                    "theme": theme,
-                    "supporting_card_count": supporting_card_count,
-                    "example_cards": example_cards,
-                }
-            )
-
-        candidate["theme_support"] = theme_support
-
-    return top_ranked_commanders
+    return [
+        {
+            **commander,
+            "theme_support": build_commander_theme_support(
+                commander,
+                collection,
+                cards_by_id,
+            ),
+        }
+        for commander in ranked_commanders[:top_n]
+    ]
 
 def recommend_commanders(
     collection: dict[str, int],
