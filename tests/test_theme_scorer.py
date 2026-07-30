@@ -410,10 +410,12 @@ class CommanderRankingTests(unittest.TestCase):
         }
         cards_by_id = {
             "oracle-green-support": {
+                "name": "Green Support",
                 "color_identity": ["G"],
                 "themes": ["tokens", "artifacts"],
             },
             "oracle-white-support": {
+                "name": "White Support",
                 "color_identity": ["W"],
                 "themes": ["tokens"],
             },
@@ -464,10 +466,12 @@ class CommanderRankingTests(unittest.TestCase):
         }
         cards_by_id = {
             "oracle-green-support": {
+                "name": "Green Support",
                 "color_identity": ["G"],
                 "themes": ["tokens"],
             },
             "oracle-colorless-support": {
+                "name": "Colorless Support",
                 "color_identity": [],
                 "themes": ["tokens"],
             },
@@ -506,6 +510,7 @@ class CommanderRankingTests(unittest.TestCase):
         collection = {"oracle-green-support": 1}
         cards_by_id = {
             "oracle-green-support": {
+                "name": "Green Support",
                 "color_identity": ["G"],
                 "themes": ["tokens"],
             },

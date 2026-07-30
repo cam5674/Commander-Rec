@@ -71,8 +71,6 @@ def normalize_color_identity(
 
     return "".join(colors)
 
-
-
 def calculate_color_identity_counts(
     collection: dict[str,int],
     cards_by_id: dict[str, dict[str, Any]],
@@ -194,6 +192,51 @@ def requires_pairing(card: dict[str, Any]) -> bool:
         or "background" in type_line
     )
 
+def get_theme_supporting_cards(
+        candidate_oracle_id: str,
+        theme: str,
+        collection: dict[str,int],
+        cards_by_id: dict[str,dict[str, Any]],
+        commander_colors: set[str],
+        limit: int = 5,
+)-> tuple[int, list[dict[str, Any]]]:
+    supporting_cards = []
+    for oracle_id, quantity in collection.items():
+        if candidate_oracle_id == oracle_id:
+            continue
+        card = cards_by_id.get(oracle_id)
+
+        if card is None:
+            continue
+
+        if theme not in card.get("themes", []):
+            continue
+
+        card_colors = set(card.get("color_identity", []))
+
+        if not card_colors.issubset(commander_colors):
+            continue
+
+        supporting_cards.append({
+            "oracle_id": oracle_id,
+            "name": card["name"],
+            "quantity": quantity,
+            "edhrec_rank": card.get("edhrec_rank"),
+        })
+
+    supporting_cards.sort(
+        key=lambda card: (
+            (
+                card["edhrec_rank"]
+                if card["edhrec_rank"] is not None
+                else float("inf")
+            ),
+            card["name"],
+        )
+    )
+
+    return len(supporting_cards), supporting_cards[:limit]
+
 
 def get_commander_candidates(
     collection: dict[str, int],
@@ -293,7 +336,31 @@ def rank_commanders(
         )
     )
 
-    return ranked_commanders[:top_n]
+    top_ranked_commanders = ranked_commanders[:top_n]
+
+    for candidate in top_ranked_commanders:
+        theme_support = []
+
+        for theme in candidate["matching_themes"]:
+            supporting_card_count, example_cards = get_theme_supporting_cards(
+                candidate_oracle_id=candidate["oracle_id"],
+                theme=theme,
+                collection=collection,
+                cards_by_id=cards_by_id,
+                commander_colors=set(candidate["color_identity"]),
+            )
+
+            theme_support.append(
+                {
+                    "theme": theme,
+                    "supporting_card_count": supporting_card_count,
+                    "example_cards": example_cards,
+                }
+            )
+
+        candidate["theme_support"] = theme_support
+
+    return top_ranked_commanders
 
 def recommend_commanders(
     collection: dict[str, int],
@@ -358,7 +425,7 @@ def main()-> None:
         collection,
         cards_by_id,
         commander_ids,
-        top_n=10,
+        top_n=2,
     )
 
     results["unmatched_names"] = unmatched_names
