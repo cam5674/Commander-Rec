@@ -8,3 +8,4 @@ __pycache__/
 
 # random
 backend/backend_sandbox.py
+.venv-broken/
