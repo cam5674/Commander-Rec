@@ -446,19 +446,21 @@ def main()-> None:
     cards_by_id = get_cards_by_id()
     commander_ids = get_commanders()
 
-    collection, unmatched_names = parse_collection(
-        CSV_PATH, name_to_id
-        )
+    parse_result = parse_collection(
+        CSV_PATH,
+        name_to_id,
+    )
 
     results = recommend_commanders(
-        collection,
+        parse_result.collection,
         cards_by_id,
         commander_ids,
         top_n=2,
     )
 
-    results["unmatched_names"] = unmatched_names
-    
+    results["unmatched_names"] = parse_result.unmatched_names
+    results["warnings"] = parse_result.warnings
+
     pprint(results)
 
 if __name__ == "__main__":

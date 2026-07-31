@@ -51,6 +51,58 @@ class APITests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["unique_cards"], 1)
         self.assertEqual(response.json()["unmatched_names"], [])
+        self.assertEqual(response.json()["warnings"], [])
+
+    def test_skipped_rows_return_structured_warnings(self) -> None:
+        recommendation_result = {
+            "unique_cards": 0,
+            "total_cards": 0,
+            "theme_scores": {},
+            "top_themes": [],
+            "recommendations": [],
+        }
+
+        with (
+            patch(
+                "backend.api.get_name_to_id",
+                return_value={},
+            ),
+            patch(
+                "backend.api.get_cards_by_id",
+                return_value={},
+            ),
+            patch(
+                "backend.api.get_commanders",
+                return_value=[],
+            ),
+            patch(
+                "backend.api.recommend_commanders",
+                return_value=recommendation_result,
+            ),
+        ):
+            response = self.client.post(
+                "/recommendations",
+                files={
+                    "upload": (
+                        "collection.csv",
+                        b"Count,Name\n1,\n",
+                        "text/csv",
+                    ),
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json()["warnings"],
+            [
+                {
+                    "code": "MISSING_CARD_NAME",
+                    "message": "Card name is missing.",
+                    "row": 2,
+                    "value": None,
+                }
+            ],
+        )
 
     def test_invalid_csv_returns_400(self) -> None:
         with patch(

@@ -2,13 +2,13 @@
 import json
 import tempfile
 import unittest
-from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
 
 
 
 from backend.csv_parser import (
+    CSVWarning,
     parse_collection,
     parse_collection_bytes,
     parse_collection_stream,
@@ -43,10 +43,11 @@ class CSVParserTests(unittest.TestCase):
 
 
         # CSV contains two Sol Ring rows with quantities 1 and 3.
-        collection, unmatched = parse_collection(csv_path, name_to_id)
+        result = parse_collection(csv_path, name_to_id)
 
-        self.assertEqual(collection, {"oracle-sol-ring": 4})
-        self.assertEqual(unmatched, [])
+        self.assertEqual(result.collection, {"oracle-sol-ring": 4})
+        self.assertEqual(result.unmatched_names, [])
+        self.assertEqual(result.warnings, [])
 
     def test_tracks_unmatched_cards(self) -> None:
         csv_path = self.write_csv(
@@ -54,10 +55,11 @@ class CSVParserTests(unittest.TestCase):
         "1,0,Unknown Card\n"
          )
 
-        collection, unmatched = parse_collection(csv_path,{}, )
+        result = parse_collection(csv_path, {})
 
-        self.assertEqual(collection, {})
-        self.assertEqual(unmatched, ["Unknown Card"])
+        self.assertEqual(result.collection, {})
+        self.assertEqual(result.unmatched_names, ["Unknown Card"])
+        self.assertEqual(result.warnings, [])
 
     def test_case_and_whitespace(self) -> None:
         name_to_id = {
@@ -69,9 +71,10 @@ class CSVParserTests(unittest.TestCase):
             "3, 0, THE  LOcust GoD\n"
         )
 
-        collection, unmatched = parse_collection(csv_path, name_to_id)
-        self.assertEqual(collection,{"oracle-the-locust-god": 3} )
-        self.assertEqual(unmatched, [])
+        result = parse_collection(csv_path, name_to_id)
+
+        self.assertEqual(result.collection, {"oracle-the-locust-god": 3})
+        self.assertEqual(result.unmatched_names, [])
 
     def test_different_csv_format(self) -> None:
         name_to_id = {
@@ -83,9 +86,10 @@ class CSVParserTests(unittest.TestCase):
             "The Locust God, 2\n"
         )
 
-        collection, unmatched = parse_collection(csv_path, name_to_id)
-        self.assertEqual(collection,{"oracle-the-locust-god": 2} )
-        self.assertEqual(unmatched, [])
+        result = parse_collection(csv_path, name_to_id)
+
+        self.assertEqual(result.collection, {"oracle-the-locust-god": 2})
+        self.assertEqual(result.unmatched_names, [])
 
     def test_missing_names(self) -> None:
 
@@ -98,12 +102,20 @@ class CSVParserTests(unittest.TestCase):
             ", 2\n"
         )
 
-        with redirect_stdout(StringIO()) as output:
-            collection, unmatched = parse_collection(csv_path, name_to_id)
+        result = parse_collection(csv_path, name_to_id)
 
-        self.assertEqual(collection,{} )
-        self.assertEqual(unmatched, [])
-        self.assertIn("card name is missing", output.getvalue())
+        self.assertEqual(result.collection, {})
+        self.assertEqual(result.unmatched_names, [])
+        self.assertEqual(
+            result.warnings,
+            [
+                CSVWarning(
+                    code="MISSING_CARD_NAME",
+                    message="Card name is missing.",
+                    row=2,
+                )
+            ],
+        )
 
     def test_multiface_aliases_resolve_to_the_same_oracle_id(self) -> None:
         name_to_id = {
@@ -116,10 +128,10 @@ class CSVParserTests(unittest.TestCase):
             "1,\"Tibalt, Cosmic Impostor\"\n"
         )
 
-        collection, unmatched = parse_collection(csv_path, name_to_id)
+        result = parse_collection(csv_path, name_to_id)
 
-        self.assertEqual(collection, {"oracle-valki": 2})
-        self.assertEqual(unmatched, [])
+        self.assertEqual(result.collection, {"oracle-valki": 2})
+        self.assertEqual(result.unmatched_names, [])
 
     def test_common_csv_header_formats(self) -> None:
         name_to_id = {"sol ring": "oracle-sol-ring"}
@@ -139,10 +151,10 @@ class CSVParserTests(unittest.TestCase):
         for format_name, content in formats.items():
             with self.subTest(format_name=format_name):
                 csv_path = self.write_csv(content)
-                collection, unmatched = parse_collection(csv_path, name_to_id)
+                result = parse_collection(csv_path, name_to_id)
 
-                self.assertEqual(collection, {"oracle-sol-ring": 2})
-                self.assertEqual(unmatched, [])
+                self.assertEqual(result.collection, {"oracle-sol-ring": 2})
+                self.assertEqual(result.unmatched_names, [])
 
     def test_invalid_quantities_are_rejected(self) -> None:
         name_to_id = {"sol ring": "oracle-sol-ring"}
@@ -153,26 +165,41 @@ class CSVParserTests(unittest.TestCase):
             "Sol Ring,-2\n"
         )
 
-        with redirect_stdout(StringIO()) as output:
-            collection, unmatched = parse_collection(csv_path, name_to_id)
+        result = parse_collection(csv_path, name_to_id)
 
-        self.assertEqual(collection, {})
-        self.assertEqual(unmatched, [])
-        self.assertIn("invalid quantity 'many'", output.getvalue())
+        self.assertEqual(result.collection, {})
+        self.assertEqual(result.unmatched_names, [])
         self.assertEqual(
-            output.getvalue().count("quantity must be greater than zero"),
-            2,
+            [warning.code for warning in result.warnings],
+            [
+                "INVALID_QUANTITY",
+                "NON_POSITIVE_QUANTITY",
+                "NON_POSITIVE_QUANTITY",
+            ],
+        )
+        self.assertEqual(
+            [warning.row for warning in result.warnings],
+            [2, 3, 4],
         )
 
     def test_rows_with_too_few_columns_are_rejected(self) -> None:
         csv_path = self.write_csv("Name,Count\nSol Ring\n")
 
-        with redirect_stdout(StringIO()) as output:
-            collection, unmatched = parse_collection(csv_path, {})
+        result = parse_collection(csv_path, {})
 
-        self.assertEqual(collection, {})
-        self.assertEqual(unmatched, [])
-        self.assertIn("invalid quantity ''", output.getvalue())
+        self.assertEqual(result.collection, {})
+        self.assertEqual(result.unmatched_names, [])
+        self.assertEqual(
+            result.warnings,
+            [
+                CSVWarning(
+                    code="INVALID_QUANTITY",
+                    message="Quantity must be a whole number.",
+                    row=2,
+                    value="",
+                )
+            ],
+        )
 
     def test_utf8_bom_file_parses(self) -> None:
         name_to_id = {"sol ring": "oracle-sol-ring"}
@@ -181,34 +208,34 @@ class CSVParserTests(unittest.TestCase):
             encoding="utf-8-sig",
         )
 
-        collection, unmatched = parse_collection(csv_path, name_to_id)
+        result = parse_collection(csv_path, name_to_id)
 
-        self.assertEqual(collection, {"oracle-sol-ring": 1})
-        self.assertEqual(unmatched, [])
+        self.assertEqual(result.collection, {"oracle-sol-ring": 1})
+        self.assertEqual(result.unmatched_names, [])
 
     def test_text_stream_parses(self) -> None:
         name_to_id = {"sol ring": "oracle-sol-ring"}
         csv_file = StringIO("Count,Name\n2,Sol Ring\n", newline="")
 
-        collection, unmatched = parse_collection_stream(
+        result = parse_collection_stream(
             csv_file,
             name_to_id,
         )
 
-        self.assertEqual(collection, {"oracle-sol-ring": 2})
-        self.assertEqual(unmatched, [])
+        self.assertEqual(result.collection, {"oracle-sol-ring": 2})
+        self.assertEqual(result.unmatched_names, [])
 
     def test_utf8_bom_bytes_parse(self) -> None:
         name_to_id = {"sol ring": "oracle-sol-ring"}
         csv_data = "Count,Name\n1,Sol Ring\n".encode("utf-8-sig")
 
-        collection, unmatched = parse_collection_bytes(
+        result = parse_collection_bytes(
             csv_data,
             name_to_id,
         )
 
-        self.assertEqual(collection, {"oracle-sol-ring": 1})
-        self.assertEqual(unmatched, [])
+        self.assertEqual(result.collection, {"oracle-sol-ring": 1})
+        self.assertEqual(result.unmatched_names, [])
 
     def test_invalid_utf8_bytes_raise_useful_error(self) -> None:
         with self.assertRaisesRegex(
@@ -236,20 +263,20 @@ class CSVParserTests(unittest.TestCase):
             "3,Command Tower\n"
         )
 
-        collection, unmatched = parse_collection(
+        result = parse_collection(
             csv_path,
             name_to_id,
             row_limit=2,
         )
 
         self.assertEqual(
-            collection,
+            result.collection,
             {
                 "oracle-sol-ring": 1,
                 "oracle-arcane-signet": 2,
             },
         )
-        self.assertEqual(unmatched, [])
+        self.assertEqual(result.unmatched_names, [])
 
     def test_missing_name_lookup_file_has_useful_error(self) -> None:
         missing_path = self.directory / "missing.json"

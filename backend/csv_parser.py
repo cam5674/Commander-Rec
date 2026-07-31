@@ -1,5 +1,6 @@
 import csv
 from collections import defaultdict
+from dataclasses import dataclass, field
 from io import StringIO
 from pathlib import Path
 from typing import TextIO
@@ -13,6 +14,25 @@ CSV_PATH = PROJECT_ROOT / "data" / "raw" / "test_collection.csv"
 NAME_TO_ID_PATH = PROJECT_ROOT / "data" / "processed" / "name_to_id.json"
 NAME_HEADER_ALIASES = ("name", "card name")
 QUANTITY_HEADER_ALIASES = ("count", "quantity", "qty")
+
+
+@dataclass(frozen=True)
+class CSVWarning:
+    """Describe a recoverable CSV row validation problem."""
+
+    code: str
+    message: str
+    row: int
+    value: str | None = None
+
+
+@dataclass
+class CollectionParseResult:
+    """Contain parsed cards, unmatched names, and row warnings."""
+
+    collection: dict[str, int]
+    unmatched_names: list[str] = field(default_factory=list)
+    warnings: list[CSVWarning] = field(default_factory=list)
 
 
 def resolve_csv_columns(fieldnames: list[str] | None) -> tuple[str, str]:
@@ -57,9 +77,10 @@ def parse_collection_stream(
     csv_file: TextIO,
     name_to_id: dict[str, str],
     row_limit: int | None = None,
-) -> tuple[dict[str, int], list[str]]:
+) -> CollectionParseResult:
     collection: defaultdict[str, int] = defaultdict(int)
     unmatched_names: list[str] = []
+    warnings: list[CSVWarning] = []
 
     reader = csv.DictReader(csv_file)
     name_column, quantity_column = resolve_csv_columns(reader.fieldnames)
@@ -72,22 +93,36 @@ def parse_collection_stream(
         name = (row.get(name_column) or "").strip()
 
         if not name:
-            print(f"Skipping row {row_number}: card name is missing.")
+            warnings.append(
+                CSVWarning(
+                    code="MISSING_CARD_NAME",
+                    message="Card name is missing.",
+                    row=row_number,
+                )
+            )
             continue
 
         try:
             quantity = int(quantity_text)
         except ValueError:
-            print(
-                f"Skipping row {row_number}: "
-                f"invalid quantity {quantity_text!r}."
+            warnings.append(
+                CSVWarning(
+                    code="INVALID_QUANTITY",
+                    message="Quantity must be a whole number.",
+                    row=row_number,
+                    value=quantity_text,
+                )
             )
             continue
 
         if quantity <= 0:
-            print(
-                f"Skipping row {row_number}: "
-                "quantity must be greater than zero."
+            warnings.append(
+                CSVWarning(
+                    code="NON_POSITIVE_QUANTITY",
+                    message="Quantity must be greater than zero.",
+                    row=row_number,
+                    value=quantity_text,
+                )
             )
             continue
 
@@ -100,14 +135,18 @@ def parse_collection_stream(
 
         collection[oracle_id] += quantity
 
-    return dict(collection), unmatched_names
+    return CollectionParseResult(
+        collection=dict(collection),
+        unmatched_names=unmatched_names,
+        warnings=warnings,
+    )
 
 
 def parse_collection(
     csv_path: Path,
     name_to_id: dict[str, str],
     row_limit: int | None = None,
-) -> tuple[dict[str, int], list[str]]:
+) -> CollectionParseResult:
     with csv_path.open(
         mode="r",
         newline="",
@@ -124,7 +163,7 @@ def parse_collection_bytes(
     csv_data: bytes,
     name_to_id: dict[str, str],
     row_limit: int | None = None,
-) -> tuple[dict[str, int], list[str]]:
+) -> CollectionParseResult:
     try:
         csv_text = csv_data.decode("utf-8-sig")
     except UnicodeDecodeError as error:
@@ -141,18 +180,23 @@ def parse_collection_bytes(
 
 def main() -> None:
     name_to_id = load_name_to_id(NAME_TO_ID_PATH)
-    collection, unmatched_names = parse_collection(
+    parse_result = parse_collection(
         CSV_PATH,
         name_to_id,
         row_limit=20_000,  # Remove this argument after testing.
     )
 
-    print(collection)
+    print(parse_result.collection)
 
-    if unmatched_names:
+    if parse_result.unmatched_names:
         print("\nUnmatched card names:")
-        for name in unmatched_names:
+        for name in parse_result.unmatched_names:
             print(f"- {name}")
+
+    if parse_result.warnings:
+        print("\nWarnings:")
+        for warning in parse_result.warnings:
+            print(f"- Row {warning.row}: {warning.message}")
 
 
 if __name__ == "__main__":

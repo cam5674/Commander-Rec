@@ -1,3 +1,5 @@
+from dataclasses import asdict
+
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
 from backend.csv_parser import parse_collection_bytes
@@ -27,7 +29,7 @@ async def create_recommendations(
         )
 
     try:
-        collection, unmatched_names = parse_collection_bytes(
+        parse_result = parse_collection_bytes(
             csv_data,
             get_name_to_id(),
             row_limit=20_000,
@@ -39,10 +41,14 @@ async def create_recommendations(
         ) from error
 
     results = recommend_commanders(
-        collection,
+        parse_result.collection,
         get_cards_by_id(),
         get_commanders(),
     )
-    results["unmatched_names"] = unmatched_names
+    results["unmatched_names"] = parse_result.unmatched_names
+    results["warnings"] = [
+        asdict(warning)
+        for warning in parse_result.warnings
+    ]
 
     return results
