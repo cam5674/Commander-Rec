@@ -41,6 +41,54 @@ The MVP should not require user accounts or permanent storage of user collection
 - Scryfall bulk data
 - GitHub
 
+## Running the API Locally
+
+From the repository root, activate the virtual environment and start the
+FastAPI development server:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m uvicorn backend.api:app --reload
+```
+
+The local API is available at `http://127.0.0.1:8000`. FastAPI also provides:
+
+- interactive API documentation at `http://127.0.0.1:8000/docs`
+- the OpenAPI schema at `http://127.0.0.1:8000/openapi.json`
+
+## API Endpoint
+
+### `POST /recommendations`
+
+Upload a collection CSV and receive commander recommendations based on its
+themes, color identity, supporting cards, and card popularity.
+
+The request must use `multipart/form-data` and assign the CSV to the `upload`
+field:
+
+```powershell
+curl.exe -X POST `
+  -F "upload=@data/test_collection.csv;type=text/csv" `
+  http://127.0.0.1:8000/recommendations
+```
+
+A successful response includes:
+
+- recognized unique-card and total-card counts
+- detected theme scores and strongest themes
+- commander recommendations with images and ownership status
+- matching themes, score breakdowns, and supporting owned cards
+- unmatched card names and structured CSV warnings
+
+Common error responses:
+
+- `400 Bad Request`: invalid CSV, too many data rows, or no recognized cards
+- `413 Payload Too Large`: the upload exceeds 5 MB
+- `422 Unprocessable Entity`: the required `upload` field is missing
+
+The complete request and response schemas are available through the interactive
+API documentation.
+
 ## Architecture
 
 Initial MVP architecture:
@@ -71,6 +119,10 @@ Reference data includes:
 - precomputed commander/theme indexes
 
 User-uploaded collections should be treated as temporary request data for the MVP.
+
+For the implemented data-processing and recommendation flows, module
+responsibilities, and API boundary, see
+[Architecture](docs/architecture.md).
 
 ## Data Pipeline
 
