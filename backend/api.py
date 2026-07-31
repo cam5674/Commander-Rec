@@ -1,8 +1,7 @@
 from dataclasses import asdict
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
-
-from backend.models import RecommendationResponse
+from fastapi.middleware.cors import CORSMiddleware
 
 from backend.csv_parser import parse_collection_bytes
 from backend.data_loader import (
@@ -10,7 +9,13 @@ from backend.data_loader import (
     get_commanders,
     get_name_to_id,
 )
+from backend.models import RecommendationResponse
 from backend.theme_scorer import recommend_commanders
+
+LOCAL_FRONTEND_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
 
 MAX_UPLOAD_BYTES = 5 * 1024 * 1024
@@ -18,10 +23,19 @@ MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 app = FastAPI(title="Commander Recommender")
 
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=LOCAL_FRONTEND_ORIGINS,
+    allow_credentials=False,
+    allow_methods=["POST"],
+    allow_headers=["Content-Type"],
+)
+
+
 @app.post(
-        "/recommendations",
-        response_model = RecommendationResponse
-    )
+    "/recommendations",
+    response_model=RecommendationResponse,
+)
 async def create_recommendations(
     upload: UploadFile = File(...),
 ) -> dict:
