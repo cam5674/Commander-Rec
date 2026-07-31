@@ -53,6 +53,68 @@ class APITests(unittest.TestCase):
         self.assertEqual(response.json()["unmatched_names"], [])
         self.assertEqual(response.json()["warnings"], [])
 
+    def test_upload_runs_complete_recommendation_flow(self) -> None:
+        cards_by_id = {
+            "oracle-sol-ring": {
+                "name": "Sol Ring",
+                "themes": ["artifacts"],
+                "color_identity": [],
+                "edhrec_rank": 1,
+            },
+            "oracle-artifact-commander": {
+                "name": "Artifact Commander",
+                "image": "https://example.com/commander.jpg",
+                "themes": ["artifacts"],
+                "commander_eligible": True,
+                "keywords": [],
+                "type_line": "Legendary Artifact Creature",
+                "edhrec_rank": 100,
+                "color_identity": [],
+            },
+        }
+
+        with (
+            patch(
+                "backend.api.get_name_to_id",
+                return_value={"sol ring": "oracle-sol-ring"},
+            ),
+            patch(
+                "backend.api.get_cards_by_id",
+                return_value=cards_by_id,
+            ),
+            patch(
+                "backend.api.get_commanders",
+                return_value=["oracle-artifact-commander"],
+            ),
+        ):
+            response = self.client.post(
+                "/recommendations",
+                files={
+                    "upload": (
+                        "collection.csv",
+                        b"Count,Name\n1,Sol Ring\n",
+                        "text/csv",
+                    ),
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        recommendation = response.json()["recommendations"][0]
+        self.assertEqual(recommendation["name"], "Artifact Commander")
+        self.assertFalse(recommendation["owned"])
+        self.assertEqual(
+            recommendation["image_url"],
+            "https://example.com/commander.jpg",
+        )
+        self.assertEqual(
+            recommendation["score_breakdown"]["theme_ratio"],
+            1.0,
+        )
+        self.assertEqual(
+            recommendation["theme_support"][0]["example_cards"][0]["name"],
+            "Sol Ring",
+        )
+
     def test_skipped_rows_return_structured_warnings(self) -> None:
         with (
             patch(
@@ -243,6 +305,39 @@ class APITests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 413)
+
+    def test_row_limit_overflow_returns_400(self) -> None:
+        csv_data = (
+            b"Count,Name\n"
+            + b"1,Sol Ring\n" * 20_001
+        )
+
+        with (
+            patch(
+                "backend.api.get_name_to_id",
+                return_value={"sol ring": "oracle-sol-ring"},
+            ),
+            patch(
+                "backend.api.recommend_commanders",
+            ) as recommender,
+        ):
+            response = self.client.post(
+                "/recommendations",
+                files={
+                    "upload": (
+                        "collection.csv",
+                        csv_data,
+                        "text/csv",
+                    ),
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.json()["detail"],
+            "Collection CSV exceeds the 20,000-row limit.",
+        )
+        recommender.assert_not_called()
 
     def test_missing_upload_returns_422(self) -> None:
         response = self.client.post("/recommendations")

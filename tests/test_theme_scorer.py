@@ -364,6 +364,7 @@ class CommanderRankingTests(unittest.TestCase):
             },
             "oracle-unowned-commander": {
                 "name": "Unowned Commander",
+                "image": "https://example.com/unowned.jpg",
                 "commander_eligible": True,
                 "themes": ["tokens"],
                 "keywords": [],
@@ -400,6 +401,16 @@ class CommanderRankingTests(unittest.TestCase):
             {
                 "Owned Commander": True,
                 "Unowned Commander": False,
+            },
+        )
+        self.assertEqual(
+            {
+                candidate["name"]: candidate["image_url"]
+                for candidate in candidates
+            },
+            {
+                "Owned Commander": None,
+                "Unowned Commander": "https://example.com/unowned.jpg",
             },
         )
 

@@ -24,6 +24,7 @@ class ThemeSupport(BaseModel):
 class CommanderRecommendation(BaseModel):
     oracle_id: str
     name: str
+    image_url: str | None = None
     themes: list[str]
     matching_themes: list[str]
     edhrec_rank: int | None = Field(default=None, ge=1)

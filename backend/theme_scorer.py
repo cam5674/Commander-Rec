@@ -267,6 +267,7 @@ def get_commander_candidates(
             {
                 "oracle_id": oracle_id,
                 "name": card["name"],
+                "image_url": card.get("image"),
                 "themes": card.get("themes", []),
                 "matching_themes": sorted(matching_themes),
                 "edhrec_rank": card.get("edhrec_rank"),
