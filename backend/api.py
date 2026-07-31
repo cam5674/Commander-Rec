@@ -2,6 +2,8 @@ from dataclasses import asdict
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 
+from backend.models import RecommendationResponse
+
 from backend.csv_parser import parse_collection_bytes
 from backend.data_loader import (
     get_cards_by_id,
@@ -16,7 +18,10 @@ MAX_UPLOAD_BYTES = 5 * 1024 * 1024
 app = FastAPI(title="Commander Recommender")
 
 
-@app.post("/recommendations")
+@app.post(
+        "/recommendations",
+        response_model = RecommendationResponse
+    )
 async def create_recommendations(
     upload: UploadFile = File(...),
 ) -> dict:
