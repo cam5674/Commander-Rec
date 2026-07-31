@@ -54,18 +54,112 @@ class APITests(unittest.TestCase):
         self.assertEqual(response.json()["warnings"], [])
 
     def test_skipped_rows_return_structured_warnings(self) -> None:
+        with (
+            patch(
+                "backend.api.get_name_to_id",
+                return_value={},
+            ),
+            patch(
+                "backend.api.recommend_commanders",
+            ) as recommender,
+        ):
+            response = self.client.post(
+                "/recommendations",
+                files={
+                    "upload": (
+                        "collection.csv",
+                        b"Count,Name\n1,\n",
+                        "text/csv",
+                    ),
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        detail = response.json()["detail"]
+
+        self.assertEqual(detail["code"], "NO_RECOGNIZED_CARDS")
+        self.assertEqual(
+            detail["warnings"],
+            [
+                {
+                    "code": "MISSING_CARD_NAME",
+                    "message": "Card name is missing.",
+                    "row": 2,
+                    "value": None,
+                }
+            ],
+        )
+        recommender.assert_not_called()
+
+    def test_all_unmatched_names_return_400(self) -> None:
+        with (
+            patch(
+                "backend.api.get_name_to_id",
+                return_value={},
+            ),
+            patch(
+                "backend.api.recommend_commanders",
+            ) as recommender,
+        ):
+            response = self.client.post(
+                "/recommendations",
+                files={
+                    "upload": (
+                        "collection.csv",
+                        b"Count,Name\n1,Unknown Card\n",
+                        "text/csv",
+                    ),
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "NO_RECOGNIZED_CARDS")
+        self.assertEqual(detail["unmatched_names"], ["Unknown Card"])
+        self.assertEqual(detail["warnings"], [])
+        recommender.assert_not_called()
+
+    def test_header_only_csv_returns_400(self) -> None:
+        with (
+            patch(
+                "backend.api.get_name_to_id",
+                return_value={},
+            ),
+            patch(
+                "backend.api.recommend_commanders",
+            ) as recommender,
+        ):
+            response = self.client.post(
+                "/recommendations",
+                files={
+                    "upload": (
+                        "collection.csv",
+                        b"Count,Name\n",
+                        "text/csv",
+                    ),
+                },
+            )
+
+        self.assertEqual(response.status_code, 400)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "NO_RECOGNIZED_CARDS")
+        self.assertEqual(detail["unmatched_names"], [])
+        self.assertEqual(detail["warnings"], [])
+        recommender.assert_not_called()
+
+    def test_mixed_valid_and_invalid_rows_return_200(self) -> None:
         recommendation_result = {
-            "unique_cards": 0,
-            "total_cards": 0,
-            "theme_scores": {},
-            "top_themes": [],
+            "unique_cards": 1,
+            "total_cards": 1,
+            "theme_scores": {"artifacts": 1},
+            "top_themes": ["artifacts"],
             "recommendations": [],
         }
 
         with (
             patch(
                 "backend.api.get_name_to_id",
-                return_value={},
+                return_value={"sol ring": "oracle-sol-ring"},
             ),
             patch(
                 "backend.api.get_cards_by_id",
@@ -85,7 +179,12 @@ class APITests(unittest.TestCase):
                 files={
                     "upload": (
                         "collection.csv",
-                        b"Count,Name\n1,\n",
+                        (
+                            b"Count,Name\n"
+                            b"1,Sol Ring\n"
+                            b"1,Unknown Card\n"
+                            b"many,Arcane Signet\n"
+                        ),
                         "text/csv",
                     ),
                 },
@@ -93,13 +192,17 @@ class APITests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
+            response.json()["unmatched_names"],
+            ["Unknown Card"],
+        )
+        self.assertEqual(
             response.json()["warnings"],
             [
                 {
-                    "code": "MISSING_CARD_NAME",
-                    "message": "Card name is missing.",
-                    "row": 2,
-                    "value": None,
+                    "code": "INVALID_QUANTITY",
+                    "message": "Quantity must be a whole number.",
+                    "row": 4,
+                    "value": "many",
                 }
             ],
         )

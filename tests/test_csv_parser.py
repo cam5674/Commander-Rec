@@ -8,6 +8,7 @@ from pathlib import Path
 
 
 from backend.csv_parser import (
+    CSVRowLimitError,
     CSVWarning,
     parse_collection,
     parse_collection_bytes,
@@ -250,7 +251,7 @@ class CSVParserTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "collection CSV is empty"):
             parse_collection(csv_path, {})
 
-    def test_row_limit_counts_only_data_rows(self) -> None:
+    def test_row_limit_rejects_extra_data_rows(self) -> None:
         name_to_id = {
             "sol ring": "oracle-sol-ring",
             "arcane signet": "oracle-arcane-signet",
@@ -261,6 +262,27 @@ class CSVParserTests(unittest.TestCase):
             "1,Sol Ring\n"
             "2,Arcane Signet\n"
             "3,Command Tower\n"
+        )
+
+        with self.assertRaisesRegex(
+            CSVRowLimitError,
+            "exceeds the 2-row limit",
+        ):
+            parse_collection(
+                csv_path,
+                name_to_id,
+                row_limit=2,
+            )
+
+    def test_row_limit_allows_exact_number_of_data_rows(self) -> None:
+        name_to_id = {
+            "sol ring": "oracle-sol-ring",
+            "arcane signet": "oracle-arcane-signet",
+        }
+        csv_path = self.write_csv(
+            "Count,Name\n"
+            "1,Sol Ring\n"
+            "2,Arcane Signet\n"
         )
 
         result = parse_collection(
@@ -277,6 +299,7 @@ class CSVParserTests(unittest.TestCase):
             },
         )
         self.assertEqual(result.unmatched_names, [])
+        self.assertEqual(result.warnings, [])
 
     def test_missing_name_lookup_file_has_useful_error(self) -> None:
         missing_path = self.directory / "missing.json"

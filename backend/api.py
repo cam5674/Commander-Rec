@@ -40,6 +40,22 @@ async def create_recommendations(
             detail=str(error),
         ) from error
 
+    if not parse_result.collection:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "NO_RECOGNIZED_CARDS",
+                "message": (
+                    "The uploaded CSV did not contain any recognized cards."
+                ),
+                "unmatched_names": parse_result.unmatched_names,
+                "warnings": [
+                    asdict(warning)
+                    for warning in parse_result.warnings
+                ],
+            },
+        )
+
     results = recommend_commanders(
         parse_result.collection,
         get_cards_by_id(),

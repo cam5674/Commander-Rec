@@ -16,6 +16,10 @@ NAME_HEADER_ALIASES = ("name", "card name")
 QUANTITY_HEADER_ALIASES = ("count", "quantity", "qty")
 
 
+class CSVRowLimitError(ValueError):
+    """Indicate that a CSV contains more data rows than allowed."""
+
+
 @dataclass(frozen=True)
 class CSVWarning:
     """Describe a recoverable CSV row validation problem."""
@@ -87,7 +91,9 @@ def parse_collection_stream(
 
     for row_number, row in enumerate(reader, start=2):
         if row_limit is not None and row_number > row_limit + 1:
-            break
+            raise CSVRowLimitError(
+                f"Collection CSV exceeds the {row_limit:,}-row limit."
+            )
 
         quantity_text = (row.get(quantity_column) or "").strip()
         name = (row.get(name_column) or "").strip()
