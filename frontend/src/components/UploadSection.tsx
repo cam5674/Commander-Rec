@@ -61,26 +61,39 @@ export function UploadSection({ config, submitting, onSubmit }: UploadSectionPro
   };
 
   return (
-    <section className="upload-section" aria-label="Upload your collection">
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="collection-upload">Collection CSV</label>
+    <section
+      className="rounded border border-line-default bg-surface-raised p-4"
+      aria-label="Upload your collection"
+    >
+      <form onSubmit={handleSubmit} className="flex flex-col items-start gap-2">
+        <label htmlFor="collection-upload" className="text-sm font-medium text-ink-primary">
+          Collection CSV
+        </label>
         <input
           id="collection-upload"
           type="file"
           accept=".csv"
           disabled={submitting}
+          className="text-sm"
           onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
         />
 
-        <p className="upload-hint">{CSV_FORMAT_HINT}</p>
+        <p className="text-sm text-ink-secondary">{CSV_FORMAT_HINT}</p>
 
         {localError && (
-          <p className="upload-local-error" role="alert">
+          <p
+            role="alert"
+            className="rounded border-l-4 border-l-status-danger bg-surface-overlay p-2 text-sm font-medium text-ink-primary"
+          >
             {localError}
           </p>
         )}
 
-        <button type="submit" disabled={!selectedFile || submitting}>
+        <button
+          type="submit"
+          disabled={!selectedFile || submitting}
+          className="rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana disabled:cursor-not-allowed disabled:opacity-50"
+        >
           {submitting ? 'Analyzing…' : 'Get Recommendations'}
         </button>
       </form>

@@ -32,6 +32,15 @@ const MANA_TOKENS: SwatchToken[] = [
   { name: 'mana-gold', hex: '#c9a349', className: 'bg-mana-gold', contrastNote: '7.66:1 glyph — AAA' },
 ];
 
+const STATUS_TOKENS: SwatchToken[] = [
+  {
+    name: 'status-danger',
+    hex: '#e5484d',
+    className: 'bg-status-danger',
+    contrastNote: '4.25:1 on raised, 4.74:1 on base — accent/border use, not body text',
+  },
+];
+
 function SwatchRow({ tokens }: { tokens: SwatchToken[] }) {
   return (
     <div className="flex flex-wrap gap-4">
@@ -65,6 +74,12 @@ export function ColorSwatches() {
       <div>
         <h3 className="mb-3 text-lg font-semibold text-ink-primary">Mana (color identity)</h3>
         <SwatchRow tokens={MANA_TOKENS} />
+      </div>
+      <div>
+        <h3 className="mb-3 text-lg font-semibold text-ink-primary">
+          Status (kept separate from mana-red — see report)
+        </h3>
+        <SwatchRow tokens={STATUS_TOKENS} />
       </div>
       <div>
         <h3 className="mb-3 text-lg font-semibold text-ink-primary">

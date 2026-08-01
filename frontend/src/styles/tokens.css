@@ -42,10 +42,26 @@
      saturation, and lightness from mana-gold so the two are never
      confused. */
   --color-brand-action: #c4762e;
+
+  /* Status/feedback — kept separate from the WUBRG set even though red is
+     inherently close in hue to mana-red. Unlike brand-action/mana-gold,
+     hue separation isn't a realistic lever here (a "danger" color has to
+     stay recognizably red), so the two rely on context instead: mana-red
+     only ever appears as a small color-identity segment, status-danger
+     only as a full alert-box border/accent — they never appear as
+     interchangeable-looking elements side by side. Verified 4.25:1 against
+     surface-raised and 4.74:1 against surface-base (both clear the 3:1
+     non-text/graphical-object minimum; not intended for body text at those
+     ratios, only accents/borders/icons). */
+  --color-status-danger: #e5484d;
 }
 
 @layer base {
   :root {
     color-scheme: dark;
+  }
+
+  body {
+    @apply min-h-svh bg-surface-base font-sans text-ink-primary;
   }
 }
