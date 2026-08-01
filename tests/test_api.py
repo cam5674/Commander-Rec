@@ -3,12 +3,40 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.api import app
+from backend.api import MAX_CSV_ROWS, MAX_UPLOAD_BYTES, app
 
 
 class APITests(unittest.TestCase):
     def setUp(self) -> None:
         self.client = TestClient(app)
+
+    def test_config_returns_enforced_upload_limits(self) -> None:
+        response = self.client.get("/config")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.json(),
+            {
+                "max_upload_bytes": MAX_UPLOAD_BYTES,
+                "max_csv_rows": MAX_CSV_ROWS,
+                "accepted_file_extensions": [".csv"],
+            },
+        )
+
+    def test_config_allows_frontend_cors_request(self) -> None:
+        response = self.client.options(
+            "/config",
+            headers={
+                "Origin": "http://localhost:5173",
+                "Access-Control-Request-Method": "GET",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.headers["access-control-allow-origin"],
+            "http://localhost:5173",
+        )
 
     def test_valid_csv_returns_recommendations(self) -> None:
         recommendation_result = {
@@ -286,9 +314,36 @@ class APITests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 400)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "INVALID_CSV")
         self.assertIn(
             "Unsupported CSV format",
+            detail["message"],
+        )
+        self.assertEqual(detail["unmatched_names"], [])
+        self.assertEqual(detail["warnings"], [])
+
+    def test_non_csv_upload_returns_standard_400(self) -> None:
+        response = self.client.post(
+            "/recommendations",
+            files={
+                "upload": (
+                    "collection.txt",
+                    b"Count,Name\n1,Sol Ring\n",
+                    "text/plain",
+                ),
+            },
+        )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
             response.json()["detail"],
+            {
+                "code": "UNSUPPORTED_FILE_TYPE",
+                "message": "The uploaded collection must be a CSV file.",
+                "unmatched_names": [],
+                "warnings": [],
+            },
         )
 
     def test_oversized_upload_returns_413(self) -> None:
@@ -305,6 +360,10 @@ class APITests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 413)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "UPLOAD_TOO_LARGE")
+        self.assertEqual(detail["unmatched_names"], [])
+        self.assertEqual(detail["warnings"], [])
 
     def test_row_limit_overflow_returns_400(self) -> None:
         csv_data = (
@@ -333,8 +392,10 @@ class APITests(unittest.TestCase):
             )
 
         self.assertEqual(response.status_code, 400)
+        detail = response.json()["detail"]
+        self.assertEqual(detail["code"], "CSV_ROW_LIMIT_EXCEEDED")
         self.assertEqual(
-            response.json()["detail"],
+            detail["message"],
             "Collection CSV exceeds the 20,000-row limit.",
         )
         recommender.assert_not_called()
@@ -343,6 +404,31 @@ class APITests(unittest.TestCase):
         response = self.client.post("/recommendations")
 
         self.assertEqual(response.status_code, 422)
+        self.assertEqual(
+            response.json()["detail"],
+            {
+                "code": "MISSING_UPLOAD",
+                "message": (
+                    "A collection CSV must be provided in the upload field."
+                ),
+                "unmatched_names": [],
+                "warnings": [],
+            },
+        )
+
+    def test_unknown_endpoint_returns_standard_error_shape(self) -> None:
+        response = self.client.get("/unknown")
+
+        self.assertEqual(response.status_code, 404)
+        self.assertEqual(
+            response.json()["detail"],
+            {
+                "code": "HTTP_404",
+                "message": "Not Found",
+                "unmatched_names": [],
+                "warnings": [],
+            },
+        )
 
 
 if __name__ == "__main__":

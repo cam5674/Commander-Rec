@@ -81,8 +81,9 @@ POST /recommendations
 
 - limits the upload to 5 MB
 - limits parsing to 20,000 data rows
+- exposes the enforced limits through `GET /config`
 - rejects collections with no recognized cards
-- converts parser failures into HTTP error responses
+- converts all client errors into one structured response shape
 - validates successful responses with Pydantic models
 
 Uploads are held in memory for the request and are not stored permanently.
@@ -174,4 +175,3 @@ into readable recommendation explanations.
 These constraints keep the recommendation path deterministic, explainable, and
 testable. Partner pairing, automated data refresh, deployment packaging, and
 persistent user features can be added after the MVP.
-

@@ -86,6 +86,35 @@ Common error responses:
 - `413 Payload Too Large`: the upload exceeds 5 MB
 - `422 Unprocessable Entity`: the required `upload` field is missing
 
+All error responses use one structure:
+
+```json
+{
+  "detail": {
+    "code": "INVALID_CSV",
+    "message": "The uploaded CSV could not be parsed.",
+    "unmatched_names": [],
+    "warnings": []
+  }
+}
+```
+
+### `GET /config`
+
+Returns the upload limits enforced by the backend so clients can perform
+matching validation:
+
+```json
+{
+  "max_upload_bytes": 5242880,
+  "max_csv_rows": 20000,
+  "accepted_file_extensions": [".csv"]
+}
+```
+
+Frontend validation is for user experience only. The API continues to enforce
+these limits for every upload.
+
 The complete request and response schemas are available through the interactive
 API documentation.
 
