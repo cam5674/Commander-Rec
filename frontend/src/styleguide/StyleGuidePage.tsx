@@ -28,9 +28,11 @@ export function StyleGuidePage() {
       <section className="mt-10">
         <h2 className="mb-4 text-2xl font-semibold">Sample commanders</h2>
         <p className="mb-4 text-sm text-ink-secondary">
-          Rendered with the real RecommendationCard component, not a lookalike demo.
+          Rendered with the real RecommendationCard component, not a lookalike demo. The
+          matching_themes/theme_support/score_breakdown values here are illustrative sample
+          data, not real API output.
         </p>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7">
+        <div className="flex max-w-2xl flex-col gap-3">
           {SAMPLE_COMMANDERS.map((commander) => (
             <RecommendationCard key={commander.name} {...commander} />
           ))}

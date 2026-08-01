@@ -92,7 +92,7 @@ export function UploadSection({ config, submitting, onSubmit }: UploadSectionPro
         <button
           type="submit"
           disabled={!selectedFile || submitting}
-          className="rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-2 rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana disabled:cursor-not-allowed disabled:opacity-50"
         >
           {submitting ? 'Analyzing…' : 'Get Recommendations'}
         </button>

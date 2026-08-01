@@ -18,13 +18,13 @@ export function ErrorState({ error }: ErrorStateProps) {
       <p className="font-medium text-ink-primary">{error.message}</p>
 
       {error.code === 'INVALID_CSV' && (
-        <p className="mt-2 rounded border border-dashed border-line-subtle p-3 text-sm text-ink-secondary">
+        <p className="mt-3 rounded border border-dashed border-line-subtle p-3 text-sm text-ink-secondary">
           {CSV_FORMAT_HINT}
         </p>
       )}
 
       {error.code === 'NO_RECOGNIZED_CARDS' && (hasUnmatchedNames || hasWarnings) && (
-        <div className="mt-2">
+        <div className="mt-3">
           <UnmatchedCardsNotice unmatchedNames={error.unmatched_names} warnings={error.warnings} />
         </div>
       )}

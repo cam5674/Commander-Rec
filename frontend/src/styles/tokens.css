@@ -11,6 +11,10 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Cinzel", Georgia, serif;
   --aspect-card: 5 / 7;
+  /* Scryfall art-crop images vary slightly per card but are ~626x457 —
+     used for recommendation-list thumbnails, which show art only (no
+     embedded rules text) rather than a photo of the whole card. */
+  --aspect-art: 626 / 457;
 
   /* Neutral UI surfaces — must stay low-saturation so they never compete
      with card art. */

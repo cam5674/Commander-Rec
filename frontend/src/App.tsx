@@ -7,6 +7,7 @@ import { LoadingState } from './components/LoadingState';
 import { ErrorState } from './components/ErrorState';
 import { RecommendationCard } from './components/RecommendationCard';
 import { UnmatchedCardsNotice } from './components/UnmatchedCardsNotice';
+import { formatThemeList } from './content/themeLabels';
 
 type ViewState = 'idle' | 'loading' | 'results' | 'error';
 
@@ -52,7 +53,7 @@ function App() {
   };
 
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-4 p-4">
+    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
       <Header />
       <main className="flex flex-col gap-4">
         {(viewState === 'idle' || viewState === 'error') && (
@@ -64,18 +65,18 @@ function App() {
         {viewState === 'error' && errorInfo && <ErrorState error={errorInfo} />}
 
         {viewState === 'results' && responseData && (
-          // Renders commander image/name/color identity. Theme breakdown,
-          // score-breakdown panels, and supporting-card evidence still need
-          // their own pass — out of scope for this change.
-          <section className="flex flex-col gap-4">
+          <section className="flex flex-col gap-2">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <p className="text-sm text-ink-secondary">
+                <p className="text-xs text-ink-muted">
                   Found {responseData.recommendations.length} recommendation(s) from{' '}
                   {responseData.unique_cards} unique cards ({responseData.total_cards} total).
                 </p>
-                <p className="text-sm text-ink-secondary">
-                  Top themes: {responseData.top_themes.join(', ') || 'none detected'}
+                <p className="text-xs text-ink-muted">
+                  Top themes:{' '}
+                  {responseData.top_themes.length > 0
+                    ? formatThemeList(responseData.top_themes)
+                    : 'none detected'}
                 </p>
               </div>
 
@@ -95,7 +96,7 @@ function App() {
               />
             )}
 
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+            <div className="mt-4 flex flex-col gap-3">
               {responseData.recommendations.map((commander) => (
                 <RecommendationCard key={commander.oracle_id} {...commander} />
               ))}
