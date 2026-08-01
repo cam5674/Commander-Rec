@@ -1,0 +1,51 @@
+@import "@fontsource/inter/400.css";
+@import "@fontsource/inter/500.css";
+@import "@fontsource/inter/600.css";
+@import "@fontsource/inter/700.css";
+@import "@fontsource/cinzel/600.css";
+@import "@fontsource/cinzel/700.css";
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Cinzel", Georgia, serif;
+  --aspect-card: 5 / 7;
+
+  /* Neutral UI surfaces — must stay low-saturation so they never compete
+     with card art. */
+  --color-surface-base: #121317;
+  --color-surface-raised: #1c1e25;
+  --color-surface-overlay: #262932;
+
+  --color-line-subtle: #2a2d35;
+  --color-line-default: #4a4d58;
+
+  /* Named `ink`/`line` rather than `text`/`border` so tokens don't collide
+     with Tailwind's own utility prefixes (e.g. `text-text-primary`). */
+  --color-ink-primary: #f2f1ed;
+  --color-ink-secondary: #a8abb3;
+  --color-ink-muted: #7d818a;
+  --color-ink-on-mana: #14151a;
+
+  /* WUBRG color-identity accents — functional use only (badges, pips,
+     filter chips), never decoration or generic UI actions. */
+  --color-mana-white: #f4ecd8;
+  --color-mana-blue: #2b6cac;
+  --color-mana-black: #6f5e7b;
+  --color-mana-red: #c33f35;
+  --color-mana-green: #3f9142;
+  --color-mana-colorless: #9a9ba0;
+  --color-mana-gold: #c9a349;
+
+  /* Separate brand/action accent — deliberately distinct in hue,
+     saturation, and lightness from mana-gold so the two are never
+     confused. */
+  --color-brand-action: #c4762e;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+}
