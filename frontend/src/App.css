@@ -1,0 +1,37 @@
+/* Structural boundaries only — no visual design yet. */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.app-header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 1rem;
+  margin-bottom: 1rem;
+}
+
+.upload-section,
+.loading-state,
+.error-state,
+.results-placeholder {
+  border: 1px solid var(--border);
+  padding: 1rem;
+}
+
+.upload-section form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+
+.error-callout,
+.no-recognized-cards-detail {
+  border: 1px dashed var(--border);
+  padding: 0.5rem;
+  margin-top: 0.5rem;
+}
