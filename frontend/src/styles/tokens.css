@@ -68,4 +68,48 @@
   body {
     @apply min-h-svh bg-surface-base font-sans text-ink-primary;
   }
+
+  /* No dedicated hover/active tokens exist yet, and no shared Button
+     component exists to patch — every button in the app is a raw
+     <button> styled per-instance. Fixed once here instead: a
+     color-agnostic opacity/scale treatment that works regardless of a
+     given button's own background (solid brand-action fill, transparent
+     text-only, or a semi-transparent icon backdrop) rather than needing
+     a bg-color swap per button variant. Tailwind's preflight never sets
+     cursor:pointer on <button> (only browsers' <a> defaults to it), so
+     that's set explicitly too.
+
+     A <label> immediately before a file input is included too: clicking
+     it opens the native file picker, so it functions as a button even
+     though it's a different element — scoped narrowly to that pattern
+     (not all <label>s) so ordinary form labels elsewhere don't pick up
+     button-like feedback they shouldn't have. */
+  button:not(:disabled),
+  label:has(+ input[type='file']:not(:disabled)) {
+    cursor: pointer;
+    transition: opacity 150ms ease, transform 150ms ease;
+  }
+
+  button:disabled,
+  label:has(+ input[type='file']:disabled) {
+    cursor: not-allowed;
+  }
+
+  button:not(:disabled):hover,
+  label:has(+ input[type='file']:not(:disabled)):hover {
+    opacity: 0.9;
+  }
+
+  button:not(:disabled):active,
+  label:has(+ input[type='file']:not(:disabled)):active {
+    opacity: 0.75;
+    transform: scale(0.98);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    button:not(:disabled),
+    label:has(+ input[type='file']) {
+      transition: none;
+    }
+  }
 }

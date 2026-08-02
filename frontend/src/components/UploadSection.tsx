@@ -67,7 +67,7 @@ export function UploadSection({ config, submitting, onSubmit }: UploadSectionPro
     >
       <form onSubmit={handleSubmit} className="flex flex-col items-start gap-2">
         <label htmlFor="collection-upload" className="text-sm font-medium text-ink-primary">
-          Collection CSV
+          Upload CSV
         </label>
         <input
           id="collection-upload"
@@ -92,7 +92,7 @@ export function UploadSection({ config, submitting, onSubmit }: UploadSectionPro
         <button
           type="submit"
           disabled={!selectedFile || submitting}
-          className="mt-2 rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-2 rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana disabled:opacity-50"
         >
           {submitting ? 'Analyzing…' : 'Get Recommendations'}
         </button>
