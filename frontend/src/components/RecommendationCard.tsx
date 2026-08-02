@@ -36,7 +36,7 @@ export function RecommendationCard({
   const supportingThemes = theme_support.filter((support) => support.supporting_card_count > 0);
 
   return (
-    <div className="rounded border border-line-default bg-surface-raised p-3 transition-colors hover:bg-surface-overlay motion-reduce:transition-none">
+    <div className="h-full rounded border border-line-default bg-surface-raised p-3 transition-colors hover:bg-surface-overlay motion-reduce:transition-none">
       <div className="flex items-start gap-3">
         <ZoomableCardImage imageUrl={image_url} name={name} />
 

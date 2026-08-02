@@ -73,9 +73,18 @@ function App() {
       : responseData.recommendations
     : [];
 
+  const hasCollectionNotices = responseData
+    ? responseData.unmatched_names.length > 0 || responseData.warnings.length > 0
+    : false;
+
+  const containerWidthClass =
+    viewState === 'results'
+      ? 'max-w-2xl md:max-w-3xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl'
+      : 'max-w-2xl';
+
   return (
-    <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
-      <Header />
+    <div className={`mx-auto flex flex-col gap-6 px-4 py-6 ${containerWidthClass}`}>
+      <Header centered={viewState === 'results'} />
       <main className="flex flex-col gap-4">
         {(viewState === 'idle' || viewState === 'error') && (
           <UploadSection
@@ -91,67 +100,82 @@ function App() {
         {viewState === 'error' && errorInfo && <ErrorState error={errorInfo} />}
 
         {viewState === 'results' && responseData && (
-          <section className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center justify-between gap-4">
-              <div>
-                <p className="text-xs text-ink-muted">
-                  Found {responseData.recommendations.length} recommendation(s) from{' '}
-                  {responseData.unique_cards} unique cards ({responseData.total_cards} total).
-                </p>
-                <p className="text-xs text-ink-muted">
-                  Top themes:{' '}
-                  {responseData.top_themes.length > 0
-                    ? formatThemeList(responseData.top_themes)
-                    : 'none detected'}
-                </p>
+          <section className="flex flex-col gap-4">
+            <div className="sticky top-4 z-30 flex justify-center">
+              <div className="flex max-w-full flex-col items-center gap-2 rounded border border-line-default bg-surface-base/95 p-3 text-center shadow-lg">
+                <Button type="button" onClick={handleReset} className="shrink-0">
+                  Upload Another Collection
+                </Button>
+                <div>
+                  <p className="text-xs text-ink-muted">
+                    Found {responseData.recommendations.length} recommendation(s) from{' '}
+                    {responseData.unique_cards} unique cards ({responseData.total_cards} total).
+                  </p>
+                  <p className="text-xs text-ink-muted">
+                    Top themes:{' '}
+                    {responseData.top_themes.length > 0
+                      ? formatThemeList(responseData.top_themes)
+                      : 'none detected'}
+                  </p>
+                </div>
               </div>
-
-              <Button type="button" onClick={handleReset} className="shrink-0">
-                Upload Another Collection
-              </Button>
             </div>
 
-            {(responseData.unmatched_names.length > 0 || responseData.warnings.length > 0) && (
-              <UnmatchedCardsNotice
-                unmatchedNames={responseData.unmatched_names}
-                warnings={responseData.warnings}
-              />
-            )}
+            {/* The sidebar stays stacked through md: two cards plus a sidebar
+                would make each horizontal card too narrow at tablet widths. */}
+            <div
+              className={`flex flex-col gap-6 ${
+                hasCollectionNotices ? 'lg:flex-row lg:items-start lg:gap-8' : ''
+              }`}
+            >
+              {hasCollectionNotices && (
+                <aside className="flex flex-col gap-4 lg:order-2 lg:w-64 lg:shrink-0">
+                  <UnmatchedCardsNotice
+                    unmatchedNames={responseData.unmatched_names}
+                    warnings={responseData.warnings}
+                  />
+                </aside>
+              )}
 
-            {themeFilter && (
-              <div className="flex items-center gap-2 text-xs text-ink-secondary">
-                <span>Filtering by {getThemeLabel(themeFilter)}</span>
-                <button
-                  type="button"
-                  onClick={() => setThemeFilter(null)}
-                  className="font-medium text-brand-action"
-                >
-                  Clear
-                </button>
-              </div>
-            )}
-
-            {responseData.recommendations.length === 0 ? (
-              <div className="mt-4">
-                <EmptyRecommendations />
-              </div>
-            ) : (
-              <div className="mt-4 flex flex-col gap-3">
-                {visibleRecommendations.map((commander, index) => (
-                  <div
-                    key={commander.oracle_id}
-                    className="animate-fade-in-up motion-reduce:animate-none"
-                    style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
-                  >
-                    <RecommendationCard
-                      {...commander}
-                      selectedTheme={themeFilter}
-                      onThemeClick={handleThemeClick}
-                    />
+              <div
+                className={`min-w-0 flex-1 lg:order-1 ${
+                  hasCollectionNotices ? '' : 'mx-auto w-full max-w-5xl'
+                }`}
+              >
+                {themeFilter && (
+                  <div className="mb-3 flex items-center gap-2 text-xs text-ink-secondary">
+                    <span>Filtering by {getThemeLabel(themeFilter)}</span>
+                    <button
+                      type="button"
+                      onClick={() => setThemeFilter(null)}
+                      className="font-medium text-brand-action"
+                    >
+                      Clear
+                    </button>
                   </div>
-                ))}
+                )}
+
+                {responseData.recommendations.length === 0 ? (
+                  <EmptyRecommendations />
+                ) : (
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {visibleRecommendations.map((commander, index) => (
+                      <div
+                        key={commander.oracle_id}
+                        className="h-full animate-fade-in-up motion-reduce:animate-none"
+                        style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
+                      >
+                        <RecommendationCard
+                          {...commander}
+                          selectedTheme={themeFilter}
+                          onThemeClick={handleThemeClick}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </section>
         )}
       </main>
