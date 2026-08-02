@@ -16,6 +16,7 @@ export type RecommendationData = Pick<
 >;
 
 export type RecommendationCardProps = RecommendationData & {
+  rank: number;
   selectedTheme: string | null;
   onThemeClick: (theme: string) => void;
 };
@@ -28,6 +29,7 @@ export function RecommendationCard({
   matching_themes,
   theme_support,
   score_breakdown,
+  rank,
   selectedTheme,
   onThemeClick,
 }: RecommendationCardProps) {
@@ -45,6 +47,9 @@ export function RecommendationCard({
             still clearly above the expanded "drilled-in" detail below. */}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-baseline gap-2">
+            <span className="text-xs font-semibold text-ink-muted" aria-label={`Rank ${rank}`}>
+              #{rank}
+            </span>
             <p className="text-base font-semibold text-ink-primary">{name}</p>
             {owned && <span className="text-xs font-medium text-ink-secondary">✓ Owned</span>}
           </div>
@@ -57,7 +62,7 @@ export function RecommendationCard({
                   type="button"
                   onClick={() => onThemeClick(theme)}
                   aria-pressed={theme === selectedTheme}
-                  className={`rounded px-1.5 py-0.5 text-xs transition-colors ${
+                  className={`min-h-8 rounded px-2 py-1 text-xs transition-colors ${
                     theme === selectedTheme
                       ? 'bg-brand-action text-ink-on-mana'
                       : 'bg-surface-overlay text-ink-secondary hover:bg-line-default'
@@ -69,14 +74,16 @@ export function RecommendationCard({
             </div>
           )}
 
-          <p className="text-sm text-ink-secondary">{buildExplanation(matching_themes)}</p>
+          <p className="text-sm text-ink-secondary">
+            {buildExplanation(matching_themes, theme_support)}
+          </p>
 
           <button
             type="button"
             onClick={() => setIsExpanded((current) => !current)}
             aria-expanded={isExpanded}
             aria-controls={detailsId}
-            className="mt-1 flex items-center gap-1 self-start text-xs font-medium text-brand-action"
+            className="mt-1 flex min-h-10 items-center gap-1 self-start py-2 text-xs font-medium text-brand-action"
           >
             {isExpanded ? 'Hide details' : 'Show details'}
             <span aria-hidden="true">{isExpanded ? '▴' : '▾'}</span>

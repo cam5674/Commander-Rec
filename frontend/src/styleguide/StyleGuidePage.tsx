@@ -54,6 +54,7 @@ export function StyleGuidePage() {
             <RecommendationCard
               key={commander.name}
               {...commander}
+              rank={SAMPLE_COMMANDERS.indexOf(commander) + 1}
               selectedTheme={themeFilter}
               onThemeClick={handleThemeClick}
             />

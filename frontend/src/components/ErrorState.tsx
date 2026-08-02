@@ -25,7 +25,12 @@ export function ErrorState({ error }: ErrorStateProps) {
 
       {error.code === 'NO_RECOGNIZED_CARDS' && (hasUnmatchedNames || hasWarnings) && (
         <div className="mt-3">
-          <UnmatchedCardsNotice unmatchedNames={error.unmatched_names} warnings={error.warnings} />
+          <UnmatchedCardsNotice
+            unmatchedNames={error.unmatched_names}
+            warnings={error.warnings}
+            defaultExpanded
+            emphasized
+          />
         </div>
       )}
     </div>

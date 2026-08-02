@@ -10,7 +10,7 @@ MTG Commander Recommender is a serverless web app that helps Magic: The
 Gathering players find Commander decks that fit cards they already own.
 Users upload a CSV of their collection; the backend detects strategic
 themes (wheels, tokens, graveyard recursion, artifacts, spellslinger,
-lifegain, aristocrats, +1/+1 counters) and returns the top 5 commander
+lifegain, aristocrats, +1/+1 counters) and returns the top 10 commander
 recommendations with explanations.
 
 Tech stack: Python, FastAPI (+ Mangum on Lambda), API Gateway, S3,
@@ -92,8 +92,8 @@ client-side limits), loading state, distinct error states per error code
 warnings}` response shape).
 
 **Results page:**
-- Collection summary (counts, strongest themes) — collapsible, low visual
-  priority.
+- Collection summary (counts, strongest themes) — compact, centered with the
+  upload-again action, and low visual priority.
 - Warnings/unmatched card names — collapsed by default, but should carry
   more visual weight if a large fraction of the collection is unmatched
   (don't treat this as universally low-priority).
@@ -114,6 +114,9 @@ warnings}` response shape).
 
 The explanation sentence is assembled by the frontend from structured
 theme/score/supporting-card data — the backend returns data, not prose.
+Supporting-card examples are selected deterministically from the existing
+theme-support pool, favoring multi-theme coverage, distinct themes, and
+narrower theme groups over universally popular staples.
 
 ## Established Interaction Patterns
 
@@ -126,9 +129,9 @@ theme/score/supporting-card data — the backend returns data, not prose.
 - Overlay repositions to stay fully on-screen near grid edges; dismiss on
   mouse-leave (desktop) or tap-outside/close control (touch).
 
-**Expand signal:** hovering/tapping anywhere on the card *other than the
-image* signals it's expandable (elevation/border highlight) — distinct
-from the zoom interaction above.
+**Expand signal:** an explicit Show details/Hide details button toggles the
+expanded card content. Keep this interaction separate from image zoom and
+theme-filter buttons so each action remains predictable and accessible.
 
 **Interactive elements generally:** must have visible hover and
 active/pressed states (cursor change, visual feedback on click) — this has

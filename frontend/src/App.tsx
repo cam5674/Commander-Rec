@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { APIError, fetchConfig, submitCollection } from './api/client';
 import type { APIErrorDetail, AppConfig, RecommendationResponse } from './types/api';
 import { Header } from './components/Header';
@@ -13,6 +13,8 @@ import { formatThemeList, getThemeLabel } from './content/themeLabels';
 
 type ViewState = 'idle' | 'loading' | 'results' | 'error';
 
+const UNMATCHED_EMPHASIS_RATIO = 0.25;
+
 const NETWORK_ERROR_DETAIL: APIErrorDetail = {
   code: 'NETWORK_ERROR',
   message: 'Could not reach the recommendation service. Check your connection and try again.',
@@ -26,6 +28,8 @@ function App() {
   const [responseData, setResponseData] = useState<RecommendationResponse | null>(null);
   const [errorInfo, setErrorInfo] = useState<APIErrorDetail | null>(null);
   const [themeFilter, setThemeFilter] = useState<string | null>(null);
+  const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
+  const errorContainerRef = useRef<HTMLDivElement>(null);
 
   // Lifted out of UploadSection so it survives that component unmounting
   // during the loading state — otherwise a server error forced re-picking
@@ -39,6 +43,14 @@ function App() {
       .then(setConfig)
       .catch(() => setConfig(null));
   }, []);
+
+  useEffect(() => {
+    if (viewState === 'results') {
+      resultsHeadingRef.current?.focus();
+    } else if (viewState === 'error') {
+      errorContainerRef.current?.focus();
+    }
+  }, [viewState]);
 
   const handleSubmit = async (file: File) => {
     setViewState('loading');
@@ -76,6 +88,14 @@ function App() {
   const hasCollectionNotices = responseData
     ? responseData.unmatched_names.length > 0 || responseData.warnings.length > 0
     : false;
+  const unmatchedComparisonCount = responseData
+    ? responseData.unique_cards + responseData.unmatched_names.length
+    : 0;
+  const shouldEmphasizeUnmatched = responseData
+    ? unmatchedComparisonCount > 0
+      && responseData.unmatched_names.length / unmatchedComparisonCount
+        >= UNMATCHED_EMPHASIS_RATIO
+    : false;
 
   const containerWidthClass =
     viewState === 'results'
@@ -97,11 +117,19 @@ function App() {
 
         {viewState === 'loading' && <LoadingState />}
 
-        {viewState === 'error' && errorInfo && <ErrorState error={errorInfo} />}
+        {viewState === 'error' && errorInfo && (
+          <div ref={errorContainerRef} tabIndex={-1} aria-label="Collection upload error">
+            <ErrorState error={errorInfo} />
+          </div>
+        )}
 
         {viewState === 'results' && responseData && (
           <section className="flex flex-col gap-4">
-            <div className="sticky top-4 z-30 flex justify-center">
+            <h2 ref={resultsHeadingRef} tabIndex={-1} className="sr-only">
+              Commander recommendations
+            </h2>
+
+            <div className="flex justify-center lg:sticky lg:top-4 lg:z-30">
               <div className="flex max-w-full flex-col items-center gap-2 rounded border border-line-default bg-surface-base/95 p-3 text-center shadow-lg">
                 <Button type="button" onClick={handleReset} className="shrink-0">
                   Upload Another Collection
@@ -133,6 +161,8 @@ function App() {
                   <UnmatchedCardsNotice
                     unmatchedNames={responseData.unmatched_names}
                     warnings={responseData.warnings}
+                    defaultExpanded={shouldEmphasizeUnmatched}
+                    emphasized={shouldEmphasizeUnmatched}
                   />
                 </aside>
               )}
@@ -167,6 +197,7 @@ function App() {
                       >
                         <RecommendationCard
                           {...commander}
+                          rank={responseData.recommendations.indexOf(commander) + 1}
                           selectedTheme={themeFilter}
                           onThemeClick={handleThemeClick}
                         />
