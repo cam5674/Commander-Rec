@@ -7,7 +7,9 @@ import { LoadingState } from './components/LoadingState';
 import { ErrorState } from './components/ErrorState';
 import { RecommendationCard } from './components/RecommendationCard';
 import { UnmatchedCardsNotice } from './components/UnmatchedCardsNotice';
-import { formatThemeList } from './content/themeLabels';
+import { EmptyRecommendations } from './components/EmptyRecommendations';
+import { Button } from './components/Button';
+import { formatThemeList, getThemeLabel } from './content/themeLabels';
 
 type ViewState = 'idle' | 'loading' | 'results' | 'error';
 
@@ -23,6 +25,12 @@ function App() {
   const [viewState, setViewState] = useState<ViewState>('idle');
   const [responseData, setResponseData] = useState<RecommendationResponse | null>(null);
   const [errorInfo, setErrorInfo] = useState<APIErrorDetail | null>(null);
+  const [themeFilter, setThemeFilter] = useState<string | null>(null);
+
+  // Lifted out of UploadSection so it survives that component unmounting
+  // during the loading state — otherwise a server error forced re-picking
+  // the same file to retry, since the child's local state was wiped.
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   useEffect(() => {
     // Progressive enhancement only — the server enforces the real limits, so a
@@ -39,6 +47,7 @@ function App() {
     try {
       const result = await submitCollection(file);
       setResponseData(result);
+      setThemeFilter(null);
       setViewState('results');
     } catch (error) {
       setErrorInfo(error instanceof APIError ? error.detail : NETWORK_ERROR_DETAIL);
@@ -50,14 +59,31 @@ function App() {
     setViewState('idle');
     setResponseData(null);
     setErrorInfo(null);
+    setThemeFilter(null);
+    setSelectedFile(null);
   };
+
+  const handleThemeClick = (theme: string) => {
+    setThemeFilter((current) => (current === theme ? null : theme));
+  };
+
+  const visibleRecommendations = responseData
+    ? themeFilter
+      ? responseData.recommendations.filter((commander) => commander.matching_themes.includes(themeFilter))
+      : responseData.recommendations
+    : [];
 
   return (
     <div className="mx-auto flex max-w-2xl flex-col gap-6 px-4 py-6">
       <Header />
       <main className="flex flex-col gap-4">
         {(viewState === 'idle' || viewState === 'error') && (
-          <UploadSection config={config} submitting={false} onSubmit={handleSubmit} />
+          <UploadSection
+            config={config}
+            selectedFile={selectedFile}
+            onFileSelect={setSelectedFile}
+            onSubmit={handleSubmit}
+          />
         )}
 
         {viewState === 'loading' && <LoadingState />}
@@ -80,13 +106,9 @@ function App() {
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={handleReset}
-                className="shrink-0 rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana"
-              >
+              <Button type="button" onClick={handleReset} className="shrink-0">
                 Upload Another Collection
-              </button>
+              </Button>
             </div>
 
             {(responseData.unmatched_names.length > 0 || responseData.warnings.length > 0) && (
@@ -96,11 +118,40 @@ function App() {
               />
             )}
 
-            <div className="mt-4 flex flex-col gap-3">
-              {responseData.recommendations.map((commander) => (
-                <RecommendationCard key={commander.oracle_id} {...commander} />
-              ))}
-            </div>
+            {themeFilter && (
+              <div className="flex items-center gap-2 text-xs text-ink-secondary">
+                <span>Filtering by {getThemeLabel(themeFilter)}</span>
+                <button
+                  type="button"
+                  onClick={() => setThemeFilter(null)}
+                  className="font-medium text-brand-action"
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+
+            {responseData.recommendations.length === 0 ? (
+              <div className="mt-4">
+                <EmptyRecommendations />
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-col gap-3">
+                {visibleRecommendations.map((commander, index) => (
+                  <div
+                    key={commander.oracle_id}
+                    className="animate-fade-in-up motion-reduce:animate-none"
+                    style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
+                  >
+                    <RecommendationCard
+                      {...commander}
+                      selectedTheme={themeFilter}
+                      onThemeClick={handleThemeClick}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </section>
         )}
       </main>

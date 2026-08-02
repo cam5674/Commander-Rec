@@ -4,7 +4,7 @@ import { ZoomableCardImage } from './ZoomableCardImage';
 import { buildExplanation, getThemeLabel } from '../content/themeLabels';
 import type { CommanderRecommendation } from '../types/api';
 
-export type RecommendationCardProps = Pick<
+export type RecommendationData = Pick<
   CommanderRecommendation,
   | 'name'
   | 'image_url'
@@ -15,6 +15,11 @@ export type RecommendationCardProps = Pick<
   | 'score_breakdown'
 >;
 
+export type RecommendationCardProps = RecommendationData & {
+  selectedTheme: string | null;
+  onThemeClick: (theme: string) => void;
+};
+
 export function RecommendationCard({
   name,
   image_url,
@@ -23,13 +28,15 @@ export function RecommendationCard({
   matching_themes,
   theme_support,
   score_breakdown,
+  selectedTheme,
+  onThemeClick,
 }: RecommendationCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const detailsId = useId();
   const supportingThemes = theme_support.filter((support) => support.supporting_card_count > 0);
 
   return (
-    <div className="rounded border border-line-default bg-surface-raised p-3">
+    <div className="rounded border border-line-default bg-surface-raised p-3 transition-colors hover:bg-surface-overlay motion-reduce:transition-none">
       <div className="flex items-start gap-3">
         <ZoomableCardImage imageUrl={image_url} name={name} />
 
@@ -45,12 +52,19 @@ export function RecommendationCard({
           {matching_themes.length > 0 && (
             <div className="flex flex-wrap gap-1">
               {matching_themes.map((theme) => (
-                <span
+                <button
                   key={theme}
-                  className="rounded bg-surface-overlay px-1.5 py-0.5 text-xs text-ink-secondary"
+                  type="button"
+                  onClick={() => onThemeClick(theme)}
+                  aria-pressed={theme === selectedTheme}
+                  className={`rounded px-1.5 py-0.5 text-xs transition-colors ${
+                    theme === selectedTheme
+                      ? 'bg-brand-action text-ink-on-mana'
+                      : 'bg-surface-overlay text-ink-secondary hover:bg-line-default'
+                  }`}
                 >
                   {getThemeLabel(theme)}
-                </span>
+                </button>
               ))}
             </div>
           )}
@@ -70,41 +84,52 @@ export function RecommendationCard({
         </div>
       </div>
 
-      {/* Expanded-state content: drilled-in detail, visually de-emphasized
-          (text-xs, muted ink) relative to the collapsed content above. */}
-      {isExpanded && (
-        <div
-          id={detailsId}
-          className="mt-3 flex flex-col gap-3 border-t border-dashed border-line-subtle pt-3 text-xs text-ink-muted"
-        >
-          <div>
-            <p className="mb-1 font-medium text-ink-secondary">Color identity</p>
-            <div className="w-32">
-              <ColorIdentityStrip colorIdentity={color_identity} />
-            </div>
-          </div>
-
-          <div>
-            <p className="font-medium text-ink-secondary">Score breakdown</p>
-            <p>Theme match: {Math.round(score_breakdown.theme_ratio * 100)}%</p>
-            <p>Color fit: {Math.round(score_breakdown.color_ratio * 100)}%</p>
-            <p>Popularity: {Math.round(score_breakdown.popularity_score * 100)}%</p>
-            <p>Overall: {Math.round(score_breakdown.final_score * 100)}%</p>
-          </div>
-
-          {supportingThemes.length > 0 && (
+      {/* Always mounted (not conditionally rendered) so the grid-rows
+          0fr->1fr transition below has something to animate — a
+          conditionally-rendered element has no "before" state to
+          transition from on mount. aria-hidden keeps it out of the
+          accessibility tree while collapsed regardless. */}
+      <div
+        id={detailsId}
+        aria-hidden={!isExpanded}
+        className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
+          isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+        }`}
+      >
+        <div className="overflow-hidden">
+          {/* Expanded-state content: drilled-in detail, visually
+              de-emphasized (text-xs, muted ink) relative to the collapsed
+              content above. */}
+          <div className="mt-3 flex flex-col gap-3 border-t border-dashed border-line-subtle pt-3 text-xs text-ink-muted">
             <div>
-              <p className="font-medium text-ink-secondary">Supporting cards you own</p>
-              {supportingThemes.map((support) => (
-                <p key={support.theme}>
-                  {getThemeLabel(support.theme)} ({support.supporting_card_count}):{' '}
-                  {support.example_cards.map((card) => card.name).join(', ')}
-                </p>
-              ))}
+              <p className="mb-1 font-medium text-ink-secondary">Color identity</p>
+              <div className="w-32">
+                <ColorIdentityStrip colorIdentity={color_identity} />
+              </div>
             </div>
-          )}
+
+            <div>
+              <p className="font-medium text-ink-secondary">Score breakdown</p>
+              <p>Theme match: {Math.round(score_breakdown.theme_ratio * 100)}%</p>
+              <p>Color fit: {Math.round(score_breakdown.color_ratio * 100)}%</p>
+              <p>Popularity: {Math.round(score_breakdown.popularity_score * 100)}%</p>
+              <p>Overall: {Math.round(score_breakdown.final_score * 100)}%</p>
+            </div>
+
+            {supportingThemes.length > 0 && (
+              <div>
+                <p className="font-medium text-ink-secondary">Supporting cards you own</p>
+                {supportingThemes.map((support) => (
+                  <p key={support.theme}>
+                    {getThemeLabel(support.theme)} ({support.supporting_card_count}):{' '}
+                    {support.example_cards.map((card) => card.name).join(', ')}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

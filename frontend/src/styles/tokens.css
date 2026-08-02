@@ -7,6 +7,17 @@
 
 @import "tailwindcss";
 
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-display: "Cinzel", Georgia, serif;
@@ -15,6 +26,12 @@
      used for recommendation-list thumbnails, which show art only (no
      embedded rules text) rather than a photo of the whole card. */
   --aspect-art: 626 / 457;
+
+  /* Staggered entrance for the recommendation list — see App.tsx, which
+     sets a per-index animation-delay alongside this. `backwards` fill
+     mode holds the 0%-keyframe styles (opacity:0) during that delay so
+     cards don't flash visible before their turn. */
+  --animate-fade-in-up: fade-in-up 300ms ease-out backwards;
 
   /* Neutral UI surfaces — must stay low-saturation so they never compete
      with card art. */

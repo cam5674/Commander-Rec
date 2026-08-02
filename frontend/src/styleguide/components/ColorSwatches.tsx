@@ -1,3 +1,5 @@
+import { Button } from '../../components/Button';
+
 interface SwatchToken {
   name: string;
   hex: string;
@@ -86,12 +88,7 @@ export function ColorSwatches() {
           Brand action vs. mana-gold (must stay visually distinct)
         </h3>
         <div className="flex flex-wrap items-center gap-6">
-          <button
-            type="button"
-            className="rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana"
-          >
-            Primary button (brand-action)
-          </button>
+          <Button type="button">Primary button (brand-action)</Button>
           <a href="#" className="text-sm font-medium text-brand-action underline">
             Link example (brand-action)
           </a>

@@ -93,7 +93,7 @@ export function ZoomableCardImage({ imageUrl, name }: ZoomableCardImageProps) {
             open();
           }}
           aria-label={`View full-size image of ${name}`}
-          className="absolute bottom-1 right-1 rounded bg-surface-base/80 p-1 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
+          className="absolute bottom-1 right-1 rounded bg-surface-base/80 p-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100"
         >
           <svg aria-hidden="true" viewBox="0 0 20 20" className="h-3.5 w-3.5 fill-none stroke-ink-primary stroke-2">
             <circle cx="8.5" cy="8.5" r="5.5" />

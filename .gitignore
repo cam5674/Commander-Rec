@@ -1,5 +1,5 @@
 # Scryfall data
-data/
+/data/
 .venv
 
 # Python caches

@@ -1,10 +1,12 @@
-import { useState, type FormEvent } from 'react';
+import { useState, type DragEvent, type FormEvent } from 'react';
 import type { AppConfig } from '../types/api';
 import { CSV_FORMAT_HINT } from '../content/csvFormat';
+import { Button } from './Button';
 
 interface UploadSectionProps {
   config: AppConfig | null;
-  submitting: boolean;
+  selectedFile: File | null;
+  onFileSelect: (file: File | null) => void;
   onSubmit: (file: File) => void;
 }
 
@@ -32,13 +34,13 @@ function validateFile(file: File, config: AppConfig): string | null {
   return null;
 }
 
-export function UploadSection({ config, submitting, onSubmit }: UploadSectionProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+export function UploadSection({ config, selectedFile, onFileSelect, onSubmit }: UploadSectionProps) {
   const [localError, setLocalError] = useState<string | null>(null);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   const handleFileChange = (file: File | null) => {
     setLocalError(null);
-    setSelectedFile(null);
+    onFileSelect(null);
 
     if (!file) {
       return;
@@ -50,7 +52,7 @@ export function UploadSection({ config, submitting, onSubmit }: UploadSectionPro
       return;
     }
 
-    setSelectedFile(file);
+    onFileSelect(file);
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -60,9 +62,27 @@ export function UploadSection({ config, submitting, onSubmit }: UploadSectionPro
     }
   };
 
+  const handleDragOver = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = () => setIsDraggingOver(false);
+
+  const handleDrop = (event: DragEvent<HTMLElement>) => {
+    event.preventDefault();
+    setIsDraggingOver(false);
+    handleFileChange(event.dataTransfer.files?.[0] ?? null);
+  };
+
   return (
     <section
-      className="rounded border border-line-default bg-surface-raised p-4"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className={`rounded border p-4 transition-colors ${
+        isDraggingOver ? 'border-brand-action bg-surface-overlay' : 'border-line-default bg-surface-raised'
+      }`}
       aria-label="Upload your collection"
     >
       <form onSubmit={handleSubmit} className="flex flex-col items-start gap-2">
@@ -73,12 +93,19 @@ export function UploadSection({ config, submitting, onSubmit }: UploadSectionPro
           id="collection-upload"
           type="file"
           accept=".csv"
-          disabled={submitting}
           className="text-sm"
           onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
         />
 
-        <p className="text-sm text-ink-secondary">{CSV_FORMAT_HINT}</p>
+        {selectedFile && (
+          <p className="text-sm text-ink-secondary">
+            Selected: <span className="text-ink-primary">{selectedFile.name}</span>
+          </p>
+        )}
+
+        <p className="text-sm text-ink-secondary">
+          {CSV_FORMAT_HINT} Or drag and drop a CSV file anywhere in this box.
+        </p>
 
         {localError && (
           <p
@@ -89,13 +116,9 @@ export function UploadSection({ config, submitting, onSubmit }: UploadSectionPro
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={!selectedFile || submitting}
-          className="mt-2 rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana disabled:opacity-50"
-        >
-          {submitting ? 'Analyzing…' : 'Get Recommendations'}
-        </button>
+        <Button type="submit" disabled={!selectedFile} className="mt-2">
+          Get Recommendations
+        </Button>
       </form>
     </section>
   );
