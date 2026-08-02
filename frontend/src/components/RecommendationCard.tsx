@@ -40,16 +40,25 @@ export function RecommendationCard({
   return (
     <div className="h-full rounded border border-line-default bg-surface-raised p-3 transition-colors hover:bg-surface-overlay motion-reduce:transition-none">
       <div className="flex items-start gap-3">
-        <ZoomableCardImage imageUrl={image_url} name={name} />
+        {/* Rank is anchored to the image corner rather than sharing the
+            name's flex-wrap flow — as a text-flow sibling of the name it
+            would get pushed onto its own line whenever the name wraps to
+            two lines, so its position depended on name length. */}
+        <div className="relative shrink-0">
+          <ZoomableCardImage imageUrl={image_url} name={name} />
+          <span
+            className="absolute left-1 top-1 rounded bg-surface-base/80 px-1.5 py-0.5 text-xs font-semibold text-ink-primary"
+            aria-label={`Rank ${rank}`}
+          >
+            #{rank}
+          </span>
+        </div>
 
         {/* Collapsed-state content: name/badge/tags/explanation are the
             secondary tier under the image, per the hierarchy pass — but
             still clearly above the expanded "drilled-in" detail below. */}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-baseline gap-2">
-            <span className="text-xs font-semibold text-ink-muted" aria-label={`Rank ${rank}`}>
-              #{rank}
-            </span>
             <p className="text-base font-semibold text-ink-primary">{name}</p>
             {owned && <span className="text-xs font-medium text-ink-secondary">✓ Owned</span>}
           </div>
