@@ -29,7 +29,7 @@ function ScoreBar({ label, ratio }: { label: string; ratio: number }) {
 
   return (
     <div className="flex items-center gap-2">
-      <span className="w-20 shrink-0">{label}</span>
+      <span className="w-36 shrink-0">{label}</span>
       <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-overlay">
         <div className="h-full rounded-full bg-brand-action" style={{ width: `${percent}%` }} />
       </div>
@@ -171,7 +171,7 @@ export function RecommendationCard({
           <div className="mt-3 flex flex-col gap-3 border-t border-dashed border-line-subtle pt-3 text-xs text-ink-muted">
             <div className="flex flex-col gap-1">
               <p className="font-medium text-ink-secondary">Score breakdown</p>
-              <ScoreBar label="Theme match" ratio={score_breakdown.theme_ratio} />
+              <ScoreBar label="Overall theme match" ratio={score_breakdown.theme_ratio} />
               <ScoreBar label="Color fit" ratio={score_breakdown.color_ratio} />
               <ScoreBar label="Popularity" ratio={score_breakdown.popularity_score} />
               <ScoreBar label="Overall" ratio={score_breakdown.final_score} />
