@@ -4,6 +4,7 @@ import { ColorIdentityStrip } from './ColorIdentityStrip';
 
 interface ZoomableCardImageProps {
   imageUrl: string | null;
+  scryfallUrl: string;
   name: string;
   colorIdentity: string[];
 }
@@ -38,7 +39,7 @@ function computePosition(triggerRect: DOMRect): OverlayPosition {
 // desktop and tap-the-icon on touch (no hover). The rest of a
 // RecommendationCard (name/badges/"Show details") has its own separate
 // click handling untouched by this component — see report.
-export function ZoomableCardImage({ imageUrl, name, colorIdentity }: ZoomableCardImageProps) {
+export function ZoomableCardImage({ imageUrl, scryfallUrl, name, colorIdentity }: ZoomableCardImageProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState<OverlayPosition | null>(null);
@@ -91,7 +92,15 @@ export function ZoomableCardImage({ imageUrl, name, colorIdentity }: ZoomableCar
         onMouseEnter={open}
         onMouseLeave={close}
       >
-        <img src={toArtCropUrl(imageUrl)} alt={name} className="h-full w-full object-cover" />
+        <a
+          href={scryfallUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`View ${name} on Scryfall`}
+          className="block h-full w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-brand-action"
+        >
+          <img src={toArtCropUrl(imageUrl)} alt={name} className="h-full w-full object-cover" />
+        </a>
 
         {/* Hidden by default, revealed on hover (desktop) or always shown
             on touch devices, which have no hover state to reveal it. */}

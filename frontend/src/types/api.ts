@@ -12,6 +12,9 @@ export interface ScoreBreakdown {
 
 export interface SupportingCard {
   oracle_id: string;
+  scryfall_id: string | null;
+  scryfall_url: string;
+  image_url: string | null;
   name: string;
   quantity: number;
   edhrec_rank: number | null;
@@ -25,6 +28,8 @@ export interface ThemeSupport {
 
 export interface CommanderRecommendation {
   oracle_id: string;
+  scryfall_id: string | null;
+  scryfall_url: string;
   name: string;
   image_url: string | null;
   themes: string[];

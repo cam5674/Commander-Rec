@@ -6,6 +6,7 @@ from backend.csv_parser import parse_collection
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote
 from .data_loader import get_cards_by_id, get_commanders, get_name_to_id
 from scripts.process_scryfall import THEME_RULES
 
@@ -23,6 +24,11 @@ PAIRING_KEYWORDS = {
     "doctor's companion",
     "friends forever",
 }
+
+
+def get_scryfall_card_url(oracle_id: str) -> str:
+    query = quote(f"oracleid:{oracle_id}", safe="")
+    return f"https://scryfall.com/search?q={query}"
 
 
 def print_theme_matches(
@@ -220,6 +226,9 @@ def get_theme_supporting_cards(
 
         supporting_cards.append({
             "oracle_id": oracle_id,
+            "scryfall_id": card.get("scryfall_id"),
+            "scryfall_url": get_scryfall_card_url(oracle_id),
+            "image_url": card.get("image"),
             "name": card["name"],
             "quantity": quantity,
             "edhrec_rank": card.get("edhrec_rank"),
@@ -266,6 +275,8 @@ def get_commander_candidates(
         candidates.append(
             {
                 "oracle_id": oracle_id,
+                "scryfall_id": card.get("scryfall_id"),
+                "scryfall_url": get_scryfall_card_url(oracle_id),
                 "name": card["name"],
                 "image_url": card.get("image"),
                 "themes": card.get("themes", []),

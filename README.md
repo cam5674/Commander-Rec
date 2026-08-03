@@ -76,8 +76,8 @@ A successful response includes:
 
 - recognized unique-card and total-card counts
 - detected theme scores and strongest themes
-- commander recommendations with images and ownership status
-- matching themes, score breakdowns, and supporting owned cards
+- commander recommendations with images, Scryfall links, and ownership status
+- matching themes, score breakdowns, and linked supporting owned cards
 - unmatched card names and structured CSV warnings
 
 Common error responses:

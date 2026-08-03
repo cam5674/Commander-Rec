@@ -143,8 +143,8 @@ response includes:
 - unique-card and total-card counts
 - all detected theme scores and the strongest themes
 - commander recommendations
-- commander image URLs and ownership status
-- matching themes and supporting owned cards
+- commander image URLs, Scryfall identity links, and ownership status
+- matching themes and supporting owned cards with image and Scryfall metadata
 - theme, color, popularity, and final score components
 - unmatched card names and structured CSV warnings
 

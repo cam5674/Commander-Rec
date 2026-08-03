@@ -85,12 +85,15 @@ class APITests(unittest.TestCase):
         cards_by_id = {
             "oracle-sol-ring": {
                 "name": "Sol Ring",
+                "scryfall_id": "scryfall-sol-ring",
+                "image": "https://example.com/sol-ring.jpg",
                 "themes": ["artifacts"],
                 "color_identity": [],
                 "edhrec_rank": 1,
             },
             "oracle-artifact-commander": {
                 "name": "Artifact Commander",
+                "scryfall_id": "scryfall-artifact-commander",
                 "image": "https://example.com/commander.jpg",
                 "themes": ["artifacts"],
                 "commander_eligible": True,
@@ -135,12 +138,30 @@ class APITests(unittest.TestCase):
             "https://example.com/commander.jpg",
         )
         self.assertEqual(
+            recommendation["scryfall_id"],
+            "scryfall-artifact-commander",
+        )
+        self.assertEqual(
+            recommendation["scryfall_url"],
+            "https://scryfall.com/search?q=oracleid%3Aoracle-artifact-commander",
+        )
+        self.assertEqual(
             recommendation["score_breakdown"]["theme_ratio"],
             1.0,
         )
         self.assertEqual(
             recommendation["theme_support"][0]["example_cards"][0]["name"],
             "Sol Ring",
+        )
+        supporting_card = recommendation["theme_support"][0]["example_cards"][0]
+        self.assertEqual(supporting_card["scryfall_id"], "scryfall-sol-ring")
+        self.assertEqual(
+            supporting_card["scryfall_url"],
+            "https://scryfall.com/search?q=oracleid%3Aoracle-sol-ring",
+        )
+        self.assertEqual(
+            supporting_card["image_url"],
+            "https://example.com/sol-ring.jpg",
         )
 
     def test_skipped_rows_return_structured_warnings(self) -> None:

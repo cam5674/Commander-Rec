@@ -8,6 +8,7 @@ export type RecommendationData = Pick<
   CommanderRecommendation,
   | 'name'
   | 'image_url'
+  | 'scryfall_url'
   | 'color_identity'
   | 'owned'
   | 'matching_themes'
@@ -25,6 +26,7 @@ export type RecommendationCardProps = RecommendationData & {
 export function RecommendationCard({
   name,
   image_url,
+  scryfall_url,
   color_identity,
   owned,
   matching_themes,
@@ -53,7 +55,12 @@ export function RecommendationCard({
             would get pushed onto its own line whenever the name wraps to
             two lines, so its position depended on name length. */}
         <div className="relative shrink-0">
-          <ZoomableCardImage imageUrl={image_url} name={name} colorIdentity={color_identity} />
+          <ZoomableCardImage
+            imageUrl={image_url}
+            scryfallUrl={scryfall_url}
+            name={name}
+            colorIdentity={color_identity}
+          />
           <span
             className="absolute left-1 top-1 rounded bg-surface-base/80 px-1.5 py-0.5 text-xs font-semibold text-ink-primary"
             aria-label={`Rank ${rank}`}
@@ -67,7 +74,15 @@ export function RecommendationCard({
             still clearly above the expanded "drilled-in" detail below. */}
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <div className="flex flex-wrap items-baseline gap-2">
-            <p className="text-base font-semibold text-ink-primary">{name}</p>
+            <a
+              href={scryfall_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-base font-semibold text-ink-primary underline decoration-line-default underline-offset-2 hover:text-brand-action"
+            >
+              {name}
+              <span className="sr-only"> (opens on Scryfall in a new tab)</span>
+            </a>
             {owned && <span className="text-xs font-medium text-ink-secondary">✓ Owned</span>}
           </div>
 
@@ -151,10 +166,23 @@ export function RecommendationCard({
               <div>
                 <p className="font-medium text-ink-secondary">Supporting cards you own</p>
                 {supportingThemes.map((support) => (
-                  <p key={support.theme}>
-                    {getThemeLabel(support.theme)} ({support.supporting_card_count}):{' '}
-                    {support.example_cards.map((card) => card.name).join(', ')}
-                  </p>
+                  <div key={support.theme}>
+                    <span>{getThemeLabel(support.theme)} ({support.supporting_card_count}): </span>
+                    {support.example_cards.map((card, index) => (
+                      <span key={card.oracle_id}>
+                        {index > 0 && ', '}
+                        <a
+                          href={card.scryfall_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-brand-action underline underline-offset-2"
+                        >
+                          {card.name}
+                          <span className="sr-only"> (opens on Scryfall in a new tab)</span>
+                        </a>
+                      </span>
+                    ))}
+                  </div>
                 ))}
               </div>
             )}

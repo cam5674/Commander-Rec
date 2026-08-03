@@ -18,6 +18,9 @@ function support(
     supporting_card_count: supportingCardCount,
     example_cards: cards.map(([oracleId, name], index) => ({
       oracle_id: oracleId,
+      scryfall_id: null,
+      scryfall_url: `https://scryfall.com/search?q=${encodeURIComponent(`oracleid:${oracleId}`)}`,
+      image_url: null,
       name,
       quantity: 1,
       edhrec_rank: 100 + index,

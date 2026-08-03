@@ -13,6 +13,9 @@ class ScoreBreakdown(BaseModel):
 
 class SupportingCard(BaseModel):
     oracle_id: str
+    scryfall_id: str | None = None
+    scryfall_url: str
+    image_url: str | None = None
     name: str
     quantity: int = Field(ge=1)
     edhrec_rank: int | None = Field(default=None, ge=1)
@@ -26,6 +29,8 @@ class ThemeSupport(BaseModel):
 
 class CommanderRecommendation(BaseModel):
     oracle_id: str
+    scryfall_id: str | None = None
+    scryfall_url: str
     name: str
     image_url: str | None = None
     themes: list[str]
