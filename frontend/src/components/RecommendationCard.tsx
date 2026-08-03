@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { ZoomableCardImage } from './ZoomableCardImage';
+import { CardHoverPreview } from './CardHoverPreview';
 import { getThemeLabel } from '../content/themeLabels';
 import type { RecommendationPresentation } from '../content/recommendationPresentation';
 import type { CommanderRecommendation } from '../types/api';
@@ -163,25 +164,26 @@ export function RecommendationCard({
             </div>
 
             {supportingThemes.length > 0 && (
-              <div>
+              <div className="flex flex-col gap-2">
                 <p className="font-medium text-ink-secondary">Supporting cards you own</p>
                 {supportingThemes.map((support) => (
-                  <div key={support.theme}>
-                    <span>{getThemeLabel(support.theme)} ({support.supporting_card_count}): </span>
-                    {support.example_cards.map((card, index) => (
-                      <span key={card.oracle_id}>
-                        {index > 0 && ', '}
-                        <a
-                          href={card.scryfall_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-brand-action underline underline-offset-2"
-                        >
-                          {card.name}
-                          <span className="sr-only"> (opens on Scryfall in a new tab)</span>
-                        </a>
-                      </span>
-                    ))}
+                  <div key={support.theme} className="flex flex-col gap-1">
+                    <span>{getThemeLabel(support.theme)} ({support.supporting_card_count})</span>
+                    <div className="flex flex-wrap gap-1">
+                      {support.example_cards.map((card) => (
+                        <CardHoverPreview key={card.oracle_id} imageUrl={card.image_url} name={card.name}>
+                          <a
+                            href={card.scryfall_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="rounded bg-surface-overlay px-2 py-1 text-brand-action underline underline-offset-2 hover:bg-line-default"
+                          >
+                            {card.name}
+                            <span className="sr-only"> (opens on Scryfall in a new tab)</span>
+                          </a>
+                        </CardHoverPreview>
+                      ))}
+                    </div>
                   </div>
                 ))}
               </div>

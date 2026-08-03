@@ -1,6 +1,7 @@
 import { useState, type DragEvent, type FormEvent } from 'react';
 import type { AppConfig } from '../types/api';
 import { CSV_FORMAT_HINT } from '../content/csvFormat';
+import { getThemeLabel } from '../content/themeLabels';
 import { Button } from './Button';
 
 interface UploadSectionProps {
@@ -9,6 +10,20 @@ interface UploadSectionProps {
   onFileSelect: (file: File | null) => void;
   onSubmit: (file: File) => void;
 }
+
+// A representative subset (not the full internal theme list) — enough to
+// signal the kind of strategies detected without turning this into an
+// exhaustive reference. Matches README's flagship theme list.
+const HEADLINE_THEMES = [
+  'wheels',
+  'tokens',
+  'graveyard',
+  'artifacts',
+  'spellslinger',
+  'lifegain',
+  'aristocrats',
+  'plus_one_counters',
+];
 
 function getFileExtension(fileName: string): string {
   const lastDot = fileName.lastIndexOf('.');
@@ -123,6 +138,20 @@ export function UploadSection({ config, selectedFile, onFileSelect, onSubmit }: 
         <Button type="submit" disabled={!selectedFile} className="mt-2">
           Get Recommendations
         </Button>
+
+        <div className="mt-2 w-full border-t border-line-subtle pt-3">
+          <p className="text-xs font-medium text-ink-secondary">Themes we look for</p>
+          <div className="mt-1 flex flex-wrap gap-1">
+            {HEADLINE_THEMES.map((theme) => (
+              <span
+                key={theme}
+                className="rounded bg-surface-overlay px-2 py-1 text-xs text-ink-secondary"
+              >
+                {getThemeLabel(theme)}
+              </span>
+            ))}
+          </div>
+        </div>
       </form>
     </section>
   );

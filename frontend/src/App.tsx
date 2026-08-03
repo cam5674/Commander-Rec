@@ -150,6 +150,11 @@ function App() {
                       ? formatThemeList(responseData.top_themes)
                       : 'none detected'}
                   </p>
+                  {!themeFilter && (
+                    <p className="text-xs text-ink-muted">
+                      Tip: click a theme tag on any card to filter by it.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
