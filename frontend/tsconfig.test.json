@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "types": ["node"],
+    "strict": true,
+    "skipLibCheck": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "rootDir": ".",
+    "outDir": "node_modules/.tmp/recommendation-tests"
+  },
+  "include": [
+    "src/content/recommendationPresentation.ts",
+    "src/content/themeLabels.ts",
+    "src/types/api.ts",
+    "tests/**/*.ts"
+  ]
+}

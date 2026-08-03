@@ -86,14 +86,18 @@ export function UploadSection({ config, selectedFile, onFileSelect, onSubmit }: 
       aria-label="Upload your collection"
     >
       <form onSubmit={handleSubmit} className="flex flex-col items-start gap-2">
-        <label htmlFor="collection-upload" className="text-sm font-medium text-ink-primary">
-          Upload CSV
+        <p className="text-sm font-medium text-ink-primary">Upload CSV</p>
+        <label
+          htmlFor="collection-upload"
+          className="inline-flex w-fit items-center rounded bg-brand-action px-4 py-2 text-sm font-semibold text-ink-on-mana"
+        >
+          Choose File
         </label>
         <input
           id="collection-upload"
           type="file"
           accept=".csv"
-          className="text-sm"
+          className="sr-only"
           onChange={(event) => handleFileChange(event.target.files?.[0] ?? null)}
         />
 

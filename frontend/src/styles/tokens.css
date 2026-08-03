@@ -123,6 +123,15 @@
     transform: scale(0.98);
   }
 
+  /* The file input itself is visually hidden (sr-only) so the label can
+     stand in as its styled button — but that means the input's own focus
+     ring would be invisible too. :has() lets the *input's* focus state
+     drive an outline on the *label* that precedes it in the DOM. */
+  label:has(+ input[type='file']:focus-visible) {
+    outline: 2px solid var(--color-brand-action);
+    outline-offset: 2px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     button:not(:disabled),
     label:has(+ input[type='file']) {

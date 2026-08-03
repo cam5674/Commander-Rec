@@ -10,6 +10,7 @@ import { UnmatchedCardsNotice } from './components/UnmatchedCardsNotice';
 import { EmptyRecommendations } from './components/EmptyRecommendations';
 import { Button } from './components/Button';
 import { formatThemeList, getThemeLabel } from './content/themeLabels';
+import { buildRecommendationPresentations } from './content/recommendationPresentation';
 
 type ViewState = 'idle' | 'loading' | 'results' | 'error';
 
@@ -84,6 +85,10 @@ function App() {
       ? responseData.recommendations.filter((commander) => commander.matching_themes.includes(themeFilter))
       : responseData.recommendations
     : [];
+  const recommendationPresentations = buildRecommendationPresentations(
+    visibleRecommendations,
+    themeFilter,
+  );
 
   const hasCollectionNotices = responseData
     ? responseData.unmatched_names.length > 0 || responseData.warnings.length > 0
@@ -198,6 +203,7 @@ function App() {
                         <RecommendationCard
                           {...commander}
                           rank={responseData.recommendations.indexOf(commander) + 1}
+                          presentation={recommendationPresentations[index]}
                           selectedTheme={themeFilter}
                           onThemeClick={handleThemeClick}
                         />

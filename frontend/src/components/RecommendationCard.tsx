@@ -1,7 +1,7 @@
 import { useId, useState } from 'react';
-import { ColorIdentityStrip } from './ColorIdentityStrip';
 import { ZoomableCardImage } from './ZoomableCardImage';
-import { buildExplanation, getThemeLabel } from '../content/themeLabels';
+import { getThemeLabel } from '../content/themeLabels';
+import type { RecommendationPresentation } from '../content/recommendationPresentation';
 import type { CommanderRecommendation } from '../types/api';
 
 export type RecommendationData = Pick<
@@ -17,6 +17,7 @@ export type RecommendationData = Pick<
 
 export type RecommendationCardProps = RecommendationData & {
   rank: number;
+  presentation: RecommendationPresentation;
   selectedTheme: string | null;
   onThemeClick: (theme: string) => void;
 };
@@ -30,12 +31,19 @@ export function RecommendationCard({
   theme_support,
   score_breakdown,
   rank,
+  presentation,
   selectedTheme,
   onThemeClick,
 }: RecommendationCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const detailsId = useId();
   const supportingThemes = theme_support.filter((support) => support.supporting_card_count > 0);
+  const orderedThemes = presentation.primaryTheme
+    ? [
+        presentation.primaryTheme,
+        ...matching_themes.filter((theme) => theme !== presentation.primaryTheme),
+      ]
+    : matching_themes;
 
   return (
     <div className="h-full rounded border border-line-default bg-surface-raised p-3 transition-colors hover:bg-surface-overlay motion-reduce:transition-none">
@@ -45,7 +53,7 @@ export function RecommendationCard({
             would get pushed onto its own line whenever the name wraps to
             two lines, so its position depended on name length. */}
         <div className="relative shrink-0">
-          <ZoomableCardImage imageUrl={image_url} name={name} />
+          <ZoomableCardImage imageUrl={image_url} name={name} colorIdentity={color_identity} />
           <span
             className="absolute left-1 top-1 rounded bg-surface-base/80 px-1.5 py-0.5 text-xs font-semibold text-ink-primary"
             aria-label={`Rank ${rank}`}
@@ -65,7 +73,7 @@ export function RecommendationCard({
 
           {matching_themes.length > 0 && (
             <div className="flex flex-wrap gap-1">
-              {matching_themes.map((theme) => (
+              {orderedThemes.map((theme, index) => (
                 <button
                   key={theme}
                   type="button"
@@ -74,9 +82,17 @@ export function RecommendationCard({
                   className={`min-h-8 rounded px-2 py-1 text-xs transition-colors ${
                     theme === selectedTheme
                       ? 'bg-brand-action text-ink-on-mana'
-                      : 'bg-surface-overlay text-ink-secondary hover:bg-line-default'
+                      : index === 0 && theme === presentation.primaryTheme
+                        ? 'border border-brand-action bg-surface-overlay text-ink-primary hover:bg-line-default'
+                        : 'bg-surface-overlay text-ink-secondary hover:bg-line-default'
                   }`}
+                  aria-label={
+                    index === 0 && theme === presentation.primaryTheme
+                      ? `Key theme: ${getThemeLabel(theme)}`
+                      : undefined
+                  }
                 >
+                  {index === 0 && theme === presentation.primaryTheme ? 'Key: ' : ''}
                   {getThemeLabel(theme)}
                 </button>
               ))}
@@ -84,7 +100,13 @@ export function RecommendationCard({
           )}
 
           <p className="text-sm text-ink-secondary">
-            {buildExplanation(matching_themes, theme_support)}
+            {presentation.explanation}
+          </p>
+
+          <p className="text-xs text-ink-muted">
+            {Math.round(score_breakdown.final_score * 100)}% overall fit
+            {' · '}{Math.round(score_breakdown.theme_ratio * 100)}% theme
+            {' · '}{Math.round(score_breakdown.color_ratio * 100)}% color
           </p>
 
           <button
@@ -117,13 +139,6 @@ export function RecommendationCard({
               de-emphasized (text-xs, muted ink) relative to the collapsed
               content above. */}
           <div className="mt-3 flex flex-col gap-3 border-t border-dashed border-line-subtle pt-3 text-xs text-ink-muted">
-            <div>
-              <p className="mb-1 font-medium text-ink-secondary">Color identity</p>
-              <div className="w-32">
-                <ColorIdentityStrip colorIdentity={color_identity} />
-              </div>
-            </div>
-
             <div>
               <p className="font-medium text-ink-secondary">Score breakdown</p>
               <p>Theme match: {Math.round(score_breakdown.theme_ratio * 100)}%</p>

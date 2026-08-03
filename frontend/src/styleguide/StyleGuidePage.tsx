@@ -5,6 +5,7 @@ import { SpacingSample } from './components/SpacingSample';
 import { InteractionStates } from './components/InteractionStates';
 import { RecommendationCard } from '../components/RecommendationCard';
 import { SAMPLE_COMMANDERS } from './data/sampleCommanders';
+import { buildRecommendationPresentations } from '../content/recommendationPresentation';
 
 export function StyleGuidePage() {
   // Real local state, not a no-op — lets the click-to-filter theme chips
@@ -14,6 +15,13 @@ export function StyleGuidePage() {
   const handleThemeClick = (theme: string) => {
     setThemeFilter((current) => (current === theme ? null : theme));
   };
+  const visibleCommanders = SAMPLE_COMMANDERS.filter(
+    (commander) => !themeFilter || commander.matching_themes.includes(themeFilter),
+  );
+  const recommendationPresentations = buildRecommendationPresentations(
+    visibleCommanders,
+    themeFilter,
+  );
 
   return (
     <div className="min-h-screen bg-surface-base p-8 font-sans text-ink-primary">
@@ -48,13 +56,12 @@ export function StyleGuidePage() {
           data, not real API output — but the theme-chip filtering below is real.
         </p>
         <div className="flex max-w-2xl flex-col gap-3">
-          {SAMPLE_COMMANDERS.filter(
-            (commander) => !themeFilter || commander.matching_themes.includes(themeFilter),
-          ).map((commander) => (
+          {visibleCommanders.map((commander, index) => (
             <RecommendationCard
               key={commander.name}
               {...commander}
               rank={SAMPLE_COMMANDERS.indexOf(commander) + 1}
+              presentation={recommendationPresentations[index]}
               selectedTheme={themeFilter}
               onThemeClick={handleThemeClick}
             />
