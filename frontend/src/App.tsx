@@ -140,11 +140,11 @@ function App() {
                   Upload Another Collection
                 </Button>
                 <div>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-sm text-ink-secondary">
                     Found {responseData.recommendations.length} recommendation(s) from{' '}
                     {responseData.unique_cards} unique cards ({responseData.total_cards} total).
                   </p>
-                  <p className="text-xs text-ink-muted">
+                  <p className="text-sm text-ink-secondary">
                     Top themes:{' '}
                     {responseData.top_themes.length > 0
                       ? formatThemeList(responseData.top_themes)

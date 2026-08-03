@@ -24,6 +24,20 @@ export type RecommendationCardProps = RecommendationData & {
   onThemeClick: (theme: string) => void;
 };
 
+function ScoreBar({ label, ratio }: { label: string; ratio: number }) {
+  const percent = Math.round(ratio * 100);
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-20 shrink-0">{label}</span>
+      <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-overlay">
+        <div className="h-full rounded-full bg-brand-action" style={{ width: `${percent}%` }} />
+      </div>
+      <span className="w-8 shrink-0 text-right">{percent}%</span>
+    </div>
+  );
+}
+
 export function RecommendationCard({
   name,
   image_url,
@@ -155,12 +169,12 @@ export function RecommendationCard({
               de-emphasized (text-xs, muted ink) relative to the collapsed
               content above. */}
           <div className="mt-3 flex flex-col gap-3 border-t border-dashed border-line-subtle pt-3 text-xs text-ink-muted">
-            <div>
+            <div className="flex flex-col gap-1">
               <p className="font-medium text-ink-secondary">Score breakdown</p>
-              <p>Theme match: {Math.round(score_breakdown.theme_ratio * 100)}%</p>
-              <p>Color fit: {Math.round(score_breakdown.color_ratio * 100)}%</p>
-              <p>Popularity: {Math.round(score_breakdown.popularity_score * 100)}%</p>
-              <p>Overall: {Math.round(score_breakdown.final_score * 100)}%</p>
+              <ScoreBar label="Theme match" ratio={score_breakdown.theme_ratio} />
+              <ScoreBar label="Color fit" ratio={score_breakdown.color_ratio} />
+              <ScoreBar label="Popularity" ratio={score_breakdown.popularity_score} />
+              <ScoreBar label="Overall" ratio={score_breakdown.final_score} />
             </div>
 
             {supportingThemes.length > 0 && (
