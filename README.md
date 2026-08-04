@@ -41,17 +41,27 @@ The MVP should not require user accounts or permanent storage of user collection
 - Scryfall bulk data
 - GitHub
 
-## Running the API Locally
+## Running Locally
 
-From the repository root, activate the virtual environment and start the
-FastAPI development server:
+Start the FastAPI backend from the repository root:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 python -m uvicorn backend.api:app --reload
 ```
 
-The local API is available at `http://127.0.0.1:8000`. FastAPI also provides:
+In a second terminal, install the frontend dependencies and start Vite:
+
+```powershell
+cd frontend
+npm ci
+npm run dev
+```
+
+Open the frontend at `http://localhost:5173`. Keep both processes running so
+CSV uploads can reach the API at `http://127.0.0.1:8000`.
+
+FastAPI also provides:
 
 - interactive API documentation at `http://127.0.0.1:8000/docs`
 - the OpenAPI schema at `http://127.0.0.1:8000/openapi.json`

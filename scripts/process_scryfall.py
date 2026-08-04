@@ -103,6 +103,7 @@ THEME_RULES: dict[str, tuple[str, ...]] = {
         "monstrosity",
         "outlast",
     ),
+    # Check if instant or sorcery is being counted for during the processing step
     "spellslinger": (
         "instant or sorcery",
         "noncreature spell",
