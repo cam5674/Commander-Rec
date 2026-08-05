@@ -17,6 +17,8 @@ THEME_WEIGHT = 0.75
 COLOR_WEIGHT = 0.20
 POPULARITY_WEIGHT = 0.05
 MAX_EDHREC_RANK = 15_000
+MAX_RECOMMENDATIONS = 20
+MIN_THEME_MATCH_RATIO = 0.60
 PAIRING_KEYWORDS = {
     "partner",
     "partner with",
@@ -355,8 +357,12 @@ def rank_commanders(
     collection: dict[str, int],
     cards_by_id: dict[str, dict[str, Any]],
     top_n: int = 5,
+    min_theme_ratio: float = 0.0,
 ) -> list[dict[str, Any]]:
     """Score, order, and enrich the top commander candidates."""
+    if not 0.0 <= min_theme_ratio <= 1.0:
+        raise ValueError("min_theme_ratio must be between zero and one.")
+
     top_theme_total = sum(
         theme_scores.get(theme, 0)
         for theme in top_themes
@@ -372,8 +378,17 @@ def rank_commanders(
         )
         for candidate in candidates
     ]
+    eligible_commanders = [
+        commander
+        for commander in ranked_commanders
+        if (
+            commander["theme_match_score"] / top_theme_total
+            if top_theme_total
+            else 0.0
+        ) >= min_theme_ratio
+    ]
 
-    ranked_commanders.sort(
+    eligible_commanders.sort(
         key=lambda commander: (
             -commander["score_breakdown"]["final_score"],
             (
@@ -382,6 +397,7 @@ def rank_commanders(
                 else float("inf")
             ),
             commander["name"],
+            commander["oracle_id"],
         )
     )
 
@@ -394,7 +410,7 @@ def rank_commanders(
                 cards_by_id,
             ),
         }
-        for commander in ranked_commanders[:top_n]
+        for commander in eligible_commanders[:top_n]
     ]
 
 def recommend_commanders(
@@ -402,8 +418,9 @@ def recommend_commanders(
     cards_by_id: dict[str, dict[str, Any]],
     commander_ids: list[str],
     *,
-    top_n: int = 10,
+    top_n: int = MAX_RECOMMENDATIONS,
     theme_limit: int = 5,
+    min_theme_ratio: float = MIN_THEME_MATCH_RATIO,
 ) -> dict[str, Any]:
     """Return explainable commander recommendations for a collection."""
     if top_n <= 0:
@@ -436,6 +453,7 @@ def recommend_commanders(
         collection,
         cards_by_id,
         top_n=top_n,
+        min_theme_ratio=min_theme_ratio,
     )
 
     return {

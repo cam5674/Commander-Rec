@@ -1,6 +1,8 @@
 import unittest
 
 from backend.theme_scorer import (
+    MAX_RECOMMENDATIONS,
+    MIN_THEME_MATCH_RATIO,
     calculate_color_compatibility_ratio,
     calculate_color_identity_counts,
     calculate_theme_scores,
@@ -8,6 +10,7 @@ from backend.theme_scorer import (
     get_score_breakdown,
     normalize_color_identity,
     rank_commanders,
+    recommend_commanders,
 )
 
 
@@ -554,6 +557,101 @@ class CommanderRankingTests(unittest.TestCase):
         self.assertEqual(
             [commander["name"] for commander in ranked],
             ["Popular Commander", "Unranked Commander"],
+        )
+
+    def test_recommendations_require_sixty_percent_theme_match(self) -> None:
+        themes = [
+            "artifacts",
+            "card_draw",
+            "graveyard",
+            "sacrifice",
+            "tokens",
+        ]
+        collection = {}
+        cards_by_id = {}
+
+        for theme in themes:
+            for index in range(2):
+                oracle_id = f"oracle-{theme}-support-{index}"
+                collection[oracle_id] = 1
+                cards_by_id[oracle_id] = {
+                    "name": f"{theme} Support {index}",
+                    "themes": [theme],
+                    "color_identity": [],
+                    "edhrec_rank": None,
+                }
+
+        commander_themes = {
+            "oracle-strong": themes[:4],
+            "oracle-boundary": themes[:3],
+            "oracle-below-threshold": themes[:2],
+        }
+        for oracle_id, matching_themes in commander_themes.items():
+            cards_by_id[oracle_id] = {
+                "name": oracle_id.removeprefix("oracle-").replace("-", " ").title(),
+                "themes": matching_themes,
+                "commander_eligible": True,
+                "keywords": [],
+                "type_line": "Legendary Creature — Test",
+                "edhrec_rank": 100,
+                "color_identity": [],
+            }
+
+        result = recommend_commanders(
+            collection,
+            cards_by_id,
+            list(commander_themes),
+        )
+
+        self.assertEqual(
+            [
+                (
+                    commander["oracle_id"],
+                    commander["score_breakdown"]["theme_ratio"],
+                )
+                for commander in result["recommendations"]
+            ],
+            [
+                ("oracle-strong", 0.8),
+                ("oracle-boundary", 0.6),
+            ],
+        )
+
+    def test_top_twenty_ties_use_deterministic_oracle_id_order(self) -> None:
+        collection = {"oracle-token-support": 1}
+        cards_by_id = {
+            "oracle-token-support": {
+                "name": "Token Support",
+                "themes": ["tokens"],
+                "color_identity": [],
+                "edhrec_rank": None,
+            },
+        }
+        candidates = [
+            {
+                "oracle_id": f"oracle-tied-{index:02d}",
+                "name": "Tied Commander",
+                "matching_themes": ["tokens"],
+                "edhrec_rank": 100,
+                "color_identity": [],
+            }
+            for index in reversed(range(22))
+        ]
+
+        ranked = rank_commanders(
+            candidates,
+            {"tokens": 1},
+            ["tokens"],
+            collection,
+            cards_by_id,
+            top_n=MAX_RECOMMENDATIONS,
+            min_theme_ratio=MIN_THEME_MATCH_RATIO,
+        )
+
+        self.assertEqual(len(ranked), MAX_RECOMMENDATIONS)
+        self.assertEqual(
+            [commander["oracle_id"] for commander in ranked],
+            [f"oracle-tied-{index:02d}" for index in range(20)],
         )
 
 

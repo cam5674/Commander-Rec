@@ -20,7 +20,11 @@ from backend.models import (
     APIErrorResponse,
     RecommendationResponse,
 )
-from backend.theme_scorer import recommend_commanders
+from backend.theme_scorer import (
+    MAX_RECOMMENDATIONS,
+    MIN_THEME_MATCH_RATIO,
+    recommend_commanders,
+)
 
 LOCAL_FRONTEND_ORIGINS = [
     "http://localhost:5173",
@@ -192,6 +196,8 @@ async def create_recommendations(
         parse_result.collection,
         get_cards_by_id(),
         get_commanders(),
+        top_n=MAX_RECOMMENDATIONS,
+        min_theme_ratio=MIN_THEME_MATCH_RATIO,
     )
     results["unmatched_names"] = parse_result.unmatched_names
     results["warnings"] = [

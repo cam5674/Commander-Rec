@@ -164,6 +164,71 @@ class APITests(unittest.TestCase):
             "https://example.com/sol-ring.jpg",
         )
 
+    def test_upload_returns_empty_list_when_no_candidate_clears_gate(self) -> None:
+        themes = [
+            "artifacts",
+            "card_draw",
+            "graveyard",
+            "sacrifice",
+            "tokens",
+        ]
+        cards_by_id = {}
+        name_to_id = {}
+        csv_rows = ["Count,Name"]
+
+        for theme in themes:
+            oracle_id = f"oracle-{theme}-support"
+            name = f"{theme} Support"
+            name_to_id[name.casefold()] = oracle_id
+            csv_rows.append(f"1,{name}")
+            cards_by_id[oracle_id] = {
+                "name": name,
+                "themes": [theme],
+                "color_identity": [],
+                "edhrec_rank": None,
+            }
+
+        cards_by_id["oracle-commander"] = {
+            "name": "Artifact Commander",
+            "themes": ["artifacts"],
+            "commander_eligible": True,
+            "keywords": [],
+            "type_line": "Legendary Creature — Test",
+            "edhrec_rank": 100,
+            "color_identity": [],
+        }
+
+        with (
+            patch(
+                "backend.api.get_name_to_id",
+                return_value=name_to_id,
+            ),
+            patch(
+                "backend.api.get_cards_by_id",
+                return_value=cards_by_id,
+            ),
+            patch(
+                "backend.api.get_commanders",
+                return_value=["oracle-commander"],
+            ),
+        ):
+            response = self.client.post(
+                "/recommendations",
+                files={
+                    "upload": (
+                        "collection.csv",
+                        ("\n".join(csv_rows) + "\n").encode(),
+                        "text/csv",
+                    ),
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["unique_cards"], 5)
+        self.assertEqual(response.json()["recommendations"], [])
+        self.assertEqual(response.json()["unmatched_names"], [])
+        self.assertEqual(response.json()["warnings"], [])
+
     def test_skipped_rows_return_structured_warnings(self) -> None:
         with (
             patch(
