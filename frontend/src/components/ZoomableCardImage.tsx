@@ -60,6 +60,26 @@ export function ZoomableCardImage({ imageUrl, scryfallUrl, name, colorIdentity }
     setIsOpen(false);
   };
 
+  // A tap on a touch device still fires compatibility mouseenter/mouseleave
+  // for desktop-hover support elsewhere — with no real pointer resting on
+  // the element, mouseleave lands ~10ms after mouseenter and would
+  // immediately re-close an overlay the tap had just opened via the
+  // button's own onClick below. Gating on `(hover: hover)` (the same
+  // question the CSS below asks via `@media(hover:none)`) keeps this
+  // container's hover-open/close logic desktop-only, leaving the button's
+  // explicit tap-to-open and the overlay's own close control as the sole
+  // open/close path on touch.
+  const handleContainerMouseEnter = () => {
+    if (window.matchMedia('(hover: hover)').matches) {
+      open();
+    }
+  };
+  const handleContainerMouseLeave = () => {
+    if (window.matchMedia('(hover: hover)').matches) {
+      close();
+    }
+  };
+
   useEffect(() => {
     if (!isOpen) {
       return;
@@ -89,8 +109,8 @@ export function ZoomableCardImage({ imageUrl, scryfallUrl, name, colorIdentity }
       <div
         ref={containerRef}
         className="group relative aspect-art overflow-hidden rounded bg-surface-overlay"
-        onMouseEnter={open}
-        onMouseLeave={close}
+        onMouseEnter={handleContainerMouseEnter}
+        onMouseLeave={handleContainerMouseLeave}
       >
         <a
           href={scryfallUrl}
@@ -111,7 +131,7 @@ export function ZoomableCardImage({ imageUrl, scryfallUrl, name, colorIdentity }
             open();
           }}
           aria-label={`View full-size image of ${name}`}
-          className="absolute bottom-1 right-1 rounded bg-surface-base/80 p-1 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100"
+          className="absolute bottom-1 right-1 flex min-h-8 min-w-8 items-center justify-center rounded bg-surface-base/80 opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-visible:opacity-100 motion-reduce:transition-none [@media(hover:none)]:opacity-100"
         >
           <svg aria-hidden="true" viewBox="0 0 20 20" className="h-3.5 w-3.5 fill-none stroke-ink-primary stroke-2">
             <circle cx="8.5" cy="8.5" r="5.5" />
@@ -149,7 +169,7 @@ export function ZoomableCardImage({ imageUrl, scryfallUrl, name, colorIdentity }
               type="button"
               onClick={close}
               aria-label="Close full-size image"
-              className="absolute right-1 top-1 hidden rounded-full bg-surface-base/80 px-1.5 py-0.5 text-xs text-ink-primary [@media(hover:none)]:block"
+              className="absolute right-1 top-1 hidden min-h-8 min-w-8 items-center justify-center rounded-full bg-surface-base/80 text-xs text-ink-primary [@media(hover:none)]:flex"
             >
               ✕
             </button>

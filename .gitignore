@@ -13,3 +13,8 @@ backend/backend_sandbox.py
 
 .vscode/
 
+# qa
+/qa/results/
+/qa/logs/
+/qa/collections/03_large_20000_rows.csv
+/qa
