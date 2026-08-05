@@ -67,6 +67,35 @@ The script writes these files to `data/processed`:
 Oracle IDs are the stable internal identifiers used across parsing, scoring,
 and API responses.
 
+### Theme Classification
+
+`scripts/process_scryfall.py` classifies cards using three independent
+evidence sources: type line, Oracle text, and Scryfall keywords. Parenthetical
+reminder text is removed before Oracle-text matching, and matching is scoped
+to individual clauses so unrelated abilities cannot combine into one signal.
+
+Theme rules distinguish mechanics a card provides from mechanics it rewards.
+For example, a repeatable sacrifice outlet informs Sacrifice, while a death or
+sacrifice payoff informs Aristocrats. A card receives both tags only when it
+independently supports both roles.
+
+Creating a token informs Tokens, but the token's permanent types do not
+automatically add other themes:
+
+| Token | Theme(s) | Rationale |
+| --- | --- | --- |
+| Food | Tokens, Lifegain | Food's defined payoff is life gain |
+| Clue | Tokens | Its reminder-text draw ability is ignored without independent draw text |
+| Treasure | Tokens | Ramp and mana fixing are not current themes |
+
+Generic Artifact cards still receive Artifacts from their type line. This
+preserves artifact-density strategies alongside cards with explicit artifact
+synergy.
+
+Regression fixtures in `tests/test_normalization.py` define the expected
+classification behavior. After changing theme rules, regenerate the processed
+JSON files and restart the backend so its cached reference data is refreshed.
+
 ## Request Pipeline
 
 ### 1. Upload Validation
