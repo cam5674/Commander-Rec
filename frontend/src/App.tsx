@@ -15,6 +15,7 @@ import { buildRecommendationPresentations } from './content/recommendationPresen
 type ViewState = 'idle' | 'loading' | 'results' | 'error';
 
 const UNMATCHED_EMPHASIS_RATIO = 0.25;
+const DEFAULT_VISIBLE_COUNT = 10;
 
 const NETWORK_ERROR_DETAIL: APIErrorDetail = {
   code: 'NETWORK_ERROR',
@@ -29,6 +30,7 @@ function App() {
   const [responseData, setResponseData] = useState<RecommendationResponse | null>(null);
   const [errorInfo, setErrorInfo] = useState<APIErrorDetail | null>(null);
   const [themeFilter, setThemeFilter] = useState<string | null>(null);
+  const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE_COUNT);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
   const errorContainerRef = useRef<HTMLDivElement>(null);
 
@@ -61,6 +63,7 @@ function App() {
       const result = await submitCollection(file);
       setResponseData(result);
       setThemeFilter(null);
+      setVisibleCount(DEFAULT_VISIBLE_COUNT);
       setViewState('results');
     } catch (error) {
       setErrorInfo(error instanceof APIError ? error.detail : NETWORK_ERROR_DETAIL);
@@ -73,22 +76,46 @@ function App() {
     setResponseData(null);
     setErrorInfo(null);
     setThemeFilter(null);
+    setVisibleCount(DEFAULT_VISIBLE_COUNT);
     setSelectedFile(null);
   };
 
   const handleThemeClick = (theme: string) => {
     setThemeFilter((current) => (current === theme ? null : theme));
+    // Filtering always shows every matching commander from the full result
+    // set (not just what's currently revealed), so the browse cutoff is
+    // irrelevant while a filter is active. Reset it so clearing the filter
+    // lands back on the standard 10-card default rather than wherever
+    // "show more" was left.
+    setVisibleCount(DEFAULT_VISIBLE_COUNT);
   };
 
+  const handleShowMore = () => {
+    if (responseData) {
+      setVisibleCount(responseData.recommendations.length);
+    }
+  };
+
+  // Theme filtering always searches the full pool the API returned (up to
+  // 20), not just what's currently revealed — a user drilling into a theme
+  // tag expects every match, not just the ones the browse cutoff happened
+  // to show. The 10-card default and "show more" are purely a browse
+  // convenience for the unfiltered view.
   const visibleRecommendations = responseData
     ? themeFilter
       ? responseData.recommendations.filter((commander) => commander.matching_themes.includes(themeFilter))
       : responseData.recommendations
     : [];
+  const displayedRecommendations = themeFilter
+    ? visibleRecommendations
+    : visibleRecommendations.slice(0, visibleCount);
   const recommendationPresentations = buildRecommendationPresentations(
-    visibleRecommendations,
+    displayedRecommendations,
     themeFilter,
   );
+  const hasMoreToShow = responseData
+    ? !themeFilter && visibleCount < responseData.recommendations.length
+    : false;
 
   const hasCollectionNotices = responseData
     ? responseData.unmatched_names.length > 0 || responseData.warnings.length > 0
@@ -196,25 +223,35 @@ function App() {
                 )}
 
                 {responseData.recommendations.length === 0 ? (
-                  <EmptyRecommendations />
+                  <EmptyRecommendations topThemes={responseData.top_themes} />
                 ) : (
-                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                    {visibleRecommendations.map((commander, index) => (
-                      <div
-                        key={commander.oracle_id}
-                        className="h-full animate-fade-in-up motion-reduce:animate-none"
-                        style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
-                      >
-                        <RecommendationCard
-                          {...commander}
-                          rank={responseData.recommendations.indexOf(commander) + 1}
-                          presentation={recommendationPresentations[index]}
-                          selectedTheme={themeFilter}
-                          onThemeClick={handleThemeClick}
-                        />
+                  <>
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                      {displayedRecommendations.map((commander, index) => (
+                        <div
+                          key={commander.oracle_id}
+                          className="h-full animate-fade-in-up motion-reduce:animate-none"
+                          style={{ animationDelay: `${Math.min(index * 40, 400)}ms` }}
+                        >
+                          <RecommendationCard
+                            {...commander}
+                            rank={responseData.recommendations.indexOf(commander) + 1}
+                            presentation={recommendationPresentations[index]}
+                            selectedTheme={themeFilter}
+                            onThemeClick={handleThemeClick}
+                          />
+                        </div>
+                      ))}
+                    </div>
+
+                    {hasMoreToShow && (
+                      <div className="mt-4 flex justify-center">
+                        <Button type="button" onClick={handleShowMore}>
+                          Show {responseData.recommendations.length - visibleCount} more
+                        </Button>
                       </div>
-                    ))}
-                  </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
