@@ -11,6 +11,7 @@ from backend.theme_scorer import (
     normalize_color_identity,
     rank_commanders,
     recommend_commanders,
+    score_commander_candidate,
 )
 
 
@@ -199,7 +200,7 @@ class ThemeScorerTests(unittest.TestCase):
             self.cards_by_id,
         )
 
-        self.assertEqual(average, 2 / 3)
+        self.assertEqual(average, 3 / 5)
 
     def test_five_color_commander_accepts_every_color_identity(self) -> None:
         commander = {
@@ -213,7 +214,7 @@ class ThemeScorerTests(unittest.TestCase):
             self.cards_by_id,
         )
 
-        self.assertEqual(average, 1.0)
+        self.assertEqual(average, 5 / 6)
 
     def test_color_ratio_returns_zero_without_evaluable_cards(self) -> None:
         commander = {
@@ -236,7 +237,7 @@ class ThemeScorerTests(unittest.TestCase):
             cards_by_id,
         )
 
-        self.assertEqual(average, 0.0)
+        self.assertEqual(average, 0.5)
 
     def test_color_ratio_ignores_unrelated_theme_cards(self) -> None:
         commander = {
@@ -265,7 +266,7 @@ class ThemeScorerTests(unittest.TestCase):
             relevant_themes=["tokens"],
         )
 
-        self.assertEqual(ratio, 1.0)
+        self.assertEqual(ratio, 2 / 3)
 
 
 class CommanderRankingTests(unittest.TestCase):
@@ -462,15 +463,15 @@ class CommanderRankingTests(unittest.TestCase):
         self.assertEqual(ranked[0]["name"], "Theme Focused")
         self.assertEqual(
             ranked[0]["score_breakdown"]["theme_ratio"],
-            1.0,
+            0.95,
         )
         self.assertEqual(
             ranked[0]["score_breakdown"]["color_ratio"],
-            0.0,
+            0.25,
         )
         self.assertEqual(
             ranked[0]["score_breakdown"]["final_score"],
-            0.75,
+            0.7625,
         )
 
     def test_color_ratio_breaks_equal_theme_fit(self) -> None:
@@ -612,9 +613,55 @@ class CommanderRankingTests(unittest.TestCase):
                 for commander in result["recommendations"]
             ],
             [
-                ("oracle-strong", 0.8),
-                ("oracle-boundary", 0.6),
+                ("oracle-strong", 0.75),
+                ("oracle-boundary", 0.5833),
             ],
+        )
+
+    def test_small_evidence_ratios_use_laplace_smoothing(self) -> None:
+        collection = {
+            "oracle-artifact-support": 1,
+            "oracle-token-support": 1,
+        }
+        cards_by_id = {
+            "oracle-artifact-support": {
+                "name": "Artifact Support",
+                "themes": ["artifacts"],
+                "color_identity": [],
+            },
+            "oracle-token-support": {
+                "name": "Token Support",
+                "themes": ["tokens"],
+                "color_identity": [],
+            },
+        }
+        candidate = {
+            "oracle_id": "oracle-commander",
+            "name": "Test Commander",
+            "matching_themes": ["artifacts", "tokens"],
+            "edhrec_rank": None,
+            "color_identity": [],
+        }
+
+        scored = score_commander_candidate(
+            candidate,
+            {"artifacts": 1, "tokens": 1},
+            2,
+            collection,
+            cards_by_id,
+        )
+
+        self.assertEqual(
+            scored["score_breakdown"],
+            {
+                "theme_ratio": 0.75,
+                "theme_contribution": 0.5625,
+                "color_ratio": 0.75,
+                "color_contribution": 0.15,
+                "popularity_score": 0.0,
+                "popularity_contribution": 0.0,
+                "final_score": 0.7125,
+            },
         )
 
     def test_top_twenty_ties_use_deterministic_oracle_id_order(self) -> None:

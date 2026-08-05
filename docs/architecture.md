@@ -96,6 +96,20 @@ Regression fixtures in `tests/test_normalization.py` define the expected
 classification behavior. After changing theme rules, regenerate the processed
 JSON files and restart the backend so its cached reference data is refreshed.
 
+### Confidence-Adjusted Fit
+
+Theme and color fit use symmetric Laplace smoothing so very small collections
+cannot produce perfect scores from only one or two supporting cards:
+
+```text
+adjusted ratio = (matches + 1) / (total + 2)
+```
+
+The raw theme ratio still determines eligibility at the 60% threshold; the
+smoothed ratio affects scoring and display confidence only. As evidence grows,
+the adjustment approaches the raw ratio. Small-evidence behavior is covered in
+`tests/test_theme_scorer.py`.
+
 ## Request Pipeline
 
 ### 1. Upload Validation

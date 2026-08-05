@@ -147,7 +147,7 @@ class APITests(unittest.TestCase):
         )
         self.assertEqual(
             recommendation["score_breakdown"]["theme_ratio"],
-            1.0,
+            0.6667,
         )
         self.assertEqual(
             recommendation["theme_support"][0]["example_cards"][0]["name"],

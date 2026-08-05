@@ -19,6 +19,8 @@ POPULARITY_WEIGHT = 0.05
 MAX_EDHREC_RANK = 15_000
 MAX_RECOMMENDATIONS = 20
 MIN_THEME_MATCH_RATIO = 0.60
+RATIO_PRIOR_MATCHES = 1
+RATIO_PRIOR_MISSES = 1
 PAIRING_KEYWORDS = {
     "partner",
     "partner with",
@@ -99,7 +101,7 @@ def calculate_color_compatibility_ratio(
     cards_by_id: dict[str, dict[str, Any]],
     relevant_themes: list[str] | None = None,
 ) -> float:
-    """Return the share of relevant, unique cards legal in the commander's colors."""
+    """Return the smoothed share of relevant cards legal in the colors."""
     commander_colors = set(commander.get("color_identity") or [])
     commander_id = commander.get("oracle_id")
     relevant_theme_set = set(relevant_themes or [])
@@ -128,7 +130,16 @@ def calculate_color_compatibility_ratio(
 
         evaluated_cards += 1
 
-    return compatible_cards / evaluated_cards if evaluated_cards else 0.0
+    return calculate_smoothed_ratio(compatible_cards, evaluated_cards)
+
+
+def calculate_smoothed_ratio(matches: int, total: int) -> float:
+    """Return a Laplace-smoothed ratio using symmetric unit priors."""
+    return (
+        matches + RATIO_PRIOR_MATCHES
+    ) / (
+        total + RATIO_PRIOR_MATCHES + RATIO_PRIOR_MISSES
+    )
 
 def calculate_theme_scores(
     collection: dict[str, int],
@@ -299,10 +310,9 @@ def score_commander_candidate(
         theme_scores.get(theme, 0)
         for theme in candidate["matching_themes"]
     )
-    theme_ratio = (
-        theme_match_score / top_theme_total
-        if top_theme_total
-        else 0.0
+    theme_ratio = calculate_smoothed_ratio(
+        theme_match_score,
+        top_theme_total,
     )
     color_ratio = calculate_color_compatibility_ratio(
         candidate,
