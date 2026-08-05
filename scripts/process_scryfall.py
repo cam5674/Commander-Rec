@@ -16,23 +16,145 @@ COMMANDERS_OUTPUT_PATH = Path("data/processed/commanders.json")
 THEME_INDEX_OUTPUT_PATH = Path("data/processed/theme_to_card_ids.json")
 
 
-THEME_RULES: dict[str, tuple[str, ...]] = {
+CLAUSE_GAP = r"[^.;\n]{0,160}?"
+ORACLE_CLAUSE_BOUNDARY = re.compile(
+    r"(?:\n+|(?<=[.;])\s+|\s+//\s+|\s+•\s+)"
+)
+
+THEME_ORDER = (
+    "reanimator",
+    "graveyard",
+    "sacrifice",
+    "tokens",
+    "artifacts",
+    "lifegain",
+    "plus_one_counters",
+    "spellslinger",
+    "card_draw",
+    "lands",
+    "aristocrats",
+    "wheels",
+)
+
+THEME_TYPE_RULES: dict[str, tuple[str, ...]] = {
+    "artifacts": (r"\bartifact\b",),
+}
+
+GRAVEYARD_USE_PATTERN = (
+    rf"\b(?:return|cast|play|exile|copy)\b{CLAUSE_GAP}"
+    r"\bfrom (?:a|your|an opponent's) graveyard\b"
+)
+
+THEME_ORACLE_RULES: dict[str, tuple[str, ...]] = {
     "reanimator": (
-        "return target creature card from your graveyard",
-        "return a creature card from your graveyard",
-        "put target creature card from a graveyard onto the battlefield",
-        "return target permanent card from your graveyard to the battlefield",
-        "return a permanent card from your graveyard to the battlefield",
-        "return target card from a graveyard to the battlefield",
-        "return this card from your graveyard to the battlefield",
-        "cast this card from your graveyard",
-        "cast this spell from your graveyard",
-        "from a graveyard onto the battlefield",
-        "from your graveyard onto the battlefield",
+        rf"\b(?:return|put)\b{CLAUSE_GAP}"
+        rf"\b(?:creature|permanent) cards?\b{CLAUSE_GAP}"
+        rf"\bfrom (?:a|your) graveyard\b{CLAUSE_GAP}"
+        r"\b(?:onto|to) the battlefield\b",
+        rf"\bcast\b{CLAUSE_GAP}"
+        rf"\b(?:creature|permanent) spells?\b{CLAUSE_GAP}"
+        r"\bfrom your graveyard\b",
     ),
     "graveyard": (
-        "graveyard",
-        "mill",
+        r"\byou mill(?:ed)?\b",
+        r"\beach player mills?\b",
+        r"\bsurveil\b",
+        rf"\b(?:cards?|creatures?|permanents?)\b{CLAUSE_GAP}"
+        r"\bin your graveyard\b",
+        rf"\bput\b{CLAUSE_GAP}\binto (?:your |a )?graveyards?\b",
+        GRAVEYARD_USE_PATTERN,
+    ),
+    "sacrifice": (
+        rf"\byou may sacrifice\b{CLAUSE_GAP}"
+        r"\b(?:a|an|another|one or more|any number of)\b",
+        rf"\bas an additional cost\b{CLAUSE_GAP}\bsacrifice\b",
+        rf"\bsacrifice (?:this|a|an|another)\b{CLAUSE_GAP}:",
+        rf"\bsacrifice (?:this|a|an|another)\b{CLAUSE_GAP}\bto\b",
+    ),
+    "tokens": (
+        rf"\bcreate\b{CLAUSE_GAP}\btokens?\b",
+        rf"\bput\b{CLAUSE_GAP}\btokens?\b{CLAUSE_GAP}"
+        r"\bonto the battlefield\b",
+        r"\btokens? you control\b",
+        rf"\bwhenever\b{CLAUSE_GAP}\btokens?\b{CLAUSE_GAP}"
+        r"\b(?:enter|enters|die|dies|leave|leaves)\b",
+        r"\btokens? would be created\b",
+    ),
+    "artifacts": (
+        r"\bartifact spells? you cast\b",
+        r"\bartifacts? you control\b",
+        rf"\bwhenever\b{CLAUSE_GAP}\bartifact\b{CLAUSE_GAP}"
+        r"\benters\b",
+        r"\bnumber of artifacts you control\b",
+        rf"\breturn\b{CLAUSE_GAP}\bartifact card\b",
+        r"\bsacrifice an artifact\b",
+    ),
+    "lifegain": (
+        r"\bgain life\b",
+        r"\bwhenever you gain life\b",
+        r"\bgain [123] life\b",
+        r"\bgain that much life\b",
+        r"\bgain life equal to\b",
+        rf"\bcreate\b{CLAUSE_GAP}\bfood tokens?\b",
+    ),
+    "plus_one_counters": (
+        r"\+1/\+1 counters?\b",
+    ),
+    "spellslinger": (
+        rf"\b(?:cast|copy|return)\b{CLAUSE_GAP}"
+        r"\binstant or sorcery\b",
+        rf"\bcopy\b{CLAUSE_GAP}\binstant or sorcery spell\b",
+        r"\binstant and sorcery spells? you cast\b",
+        rf"\bwhenever you cast\b{CLAUSE_GAP}\bnoncreature spell\b",
+        r"\bcast an instant\b",
+        r"\bcast a sorcery\b",
+    ),
+    "card_draw": (
+        r"\bdraw a card\b",
+        r"\bdraw two cards\b",
+        r"\bdraw that many cards\b",
+        r"\bdraw three cards\b",
+        r"\bdraw four cards\b",
+        r"\bdraw x cards\b",
+        r"\bdraw cards equal to\b",
+        r"\bdraws a card\b",
+        r"\bdraw an additional card\b",
+        r"\bwhenever you draw\b",
+        r"\beach player draws\b",
+        r"\bdraw seven cards\b",
+    ),
+    "lands": (
+        r"\bwhenever a land\b",
+        r"\bplay an additional land\b",
+        r"\bsearch your library for a land\b",
+        r"\bput a land card from your hand onto the battlefield\b",
+        r"\breturn target land card from your graveyard\b",
+        r"\bland cards in your graveyard\b",
+        r"\bwhenever one or more lands enter\b",
+    ),
+    "aristocrats": (
+        rf"\bwhenever\b{CLAUSE_GAP}"
+        rf"\b(?:creature|permanent|token)s?\b{CLAUSE_GAP}\bdies?\b",
+        r"\bwhenever you sacrifice\b",
+        r"\bwhenever a permanent is sacrificed\b",
+        r"\bwhen this creature dies\b",
+    ),
+    "wheels": (
+        r"\beach player discards their hand,? then draws\b",
+        r"\beach player discards their hand and draws\b",
+        r"\bdiscard your hand,? then draw\b",
+        rf"\bshuffles? their hand\b{CLAUSE_GAP}\bthen draws\b",
+        r"\bdiscards? their hand,? then draws\b",
+        r"\bdiscard your hand and draw\b",
+        rf"\bshuffle your hand into your library\b{CLAUSE_GAP}\bthen draw\b",
+        rf"\bputs? their hand on the bottom of their library\b"
+        rf"{CLAUSE_GAP}\bthen draws\b",
+        r"\bdiscard any number of cards,? then draw\b",
+    ),
+}
+
+THEME_KEYWORD_RULES: dict[str, tuple[str, ...]] = {
+    "graveyard": (
         "surveil",
         "flashback",
         "dredge",
@@ -42,24 +164,10 @@ THEME_RULES: dict[str, tuple[str, ...]] = {
         "descend",
         "undergrowth",
     ),
-    "sacrifice": (
-        "sacrifice",
-        "whenever another creature you control dies",
-        "casualty",
-        "exploit",
-        "devour",
-        "emerge",
-        "offering",
-        "morbid",
-        "revolt",
-    ),
+    "sacrifice": ("exploit", "devour"),
     "tokens": (
-        "create a",
-        "create two",
-        "create three",
-        "creature token",
+        "investigate",
         "populate",
-        "convoke",
         "fabricate",
         "incubate",
         "amass",
@@ -67,31 +175,12 @@ THEME_RULES: dict[str, tuple[str, ...]] = {
         "offspring",
     ),
     "artifacts": (
-        "artifact",
-        "artifacts you control",
-        "artifact card",
-        "treasure token",
-        "clue token",
-        "food token",
-        "equipment",
-        "vehicle",
         "metalcraft",
         "affinity for artifacts",
         "improvise",
     ),
-    "lifegain": (
-        "gain life",
-        "whenever you gain life",
-        "lifelink",
-        "gain 1 life",
-        "gain 2 life",
-        "gain 3 life",
-        "gain that much life",
-        "gain life equal to",
-        "extort",
-    ),
+    "lifegain": ("lifelink", "extort"),
     "plus_one_counters": (
-        "+1/+1 counter",
         "proliferate",
         "evolve",
         "adapt",
@@ -103,76 +192,18 @@ THEME_RULES: dict[str, tuple[str, ...]] = {
         "monstrosity",
         "outlast",
     ),
-    # Check if instant or sorcery is being counted for during the processing step
-    "spellslinger": (
-        "instant or sorcery",
-        "noncreature spell",
-        "whenever you cast",
-        "magecraft",
-        "storm",
-        "prowess",
-        "copy that spell",
-        "instant and sorcery",
-        "spells you cast",
-        "cast an instant",
-        "cast a sorcery",
-    ),
-    "card_draw": (
-        "draw a card",
-        "draw two cards",
-        "draw that many cards",
-        "draw three cards",
-        "draw four cards",
-        "draw x cards",
-        "draw cards equal to",
-        "draws a card",
-        "draw an additional card",
-        "whenever you draw",
-        "each player draws",
-        "draw seven cards",
-    ),
-    "lands": (
-        "landfall",
-        "whenever a land",
-        "play an additional land",
-        "landcycling",
-        "domain",
-        "explore",
-        "search your library for a land",
-        "put a land card from your hand onto the battlefield",
-        "return target land card from your graveyard",
-        "land cards in your graveyard",
-        "whenever one or more lands enter",
-    ),
-    "aristocrats": (
-        "whenever a creature dies",
-        "whenever another creature dies",
-        "whenever another creature you control dies",
-        "whenever you sacrifice",
-        "whenever you sacrifice another",
-        "whenever a permanent is sacrificed",
-        "when this creature dies",
-        "whenever a creature you control dies",
-        "whenever one or more creatures die",
-        "each opponent sacrifices a creature",
-        "morbid",
-        "revolt",
-        "afterlife",
-    ),
-    "wheels": (
-        "each player discards their hand, then draws",
-        "each player discards their hand and draws",
-        "discard your hand, then draw",
-        "shuffles their hand and graveyard into their library, then draws",
-        "shuffles their hand into their library, then draws",
-        "discards their hand, then draws",
-        "discard their hand, then draw",
-        "discard your hand and draw",
-        "discards their hand and draws",
-        "shuffle your hand into your library, then draw",
-        "puts their hand on the bottom of their library, then draws",
-        "discard any number of cards, then draw",
-    ),
+    "spellslinger": ("magecraft", "storm", "prowess"),
+    "lands": ("landfall", "landcycling", "domain", "explore"),
+    "aristocrats": ("morbid", "afterlife"),
+}
+
+THEME_RULES: dict[str, tuple[str, ...]] = {
+    theme: (
+        THEME_TYPE_RULES.get(theme, ())
+        + THEME_ORACLE_RULES.get(theme, ())
+        + THEME_KEYWORD_RULES.get(theme, ())
+    )
+    for theme in THEME_ORDER
 }
 
 
@@ -256,26 +287,97 @@ def normalize_faces(card: dict[str, Any]) -> list[dict[str, Any]]:
     ]
 
 
+def strip_reminder_text(oracle_text: str) -> str:
+    """Remove parenthetical reminder text, including nested parentheses."""
+    stripped_characters: list[str] = []
+    parenthesis_depth = 0
+
+    for character in oracle_text:
+        if character == "(":
+            parenthesis_depth += 1
+            continue
+
+        if character == ")" and parenthesis_depth:
+            parenthesis_depth -= 1
+            continue
+
+        if parenthesis_depth == 0:
+            stripped_characters.append(character)
+
+    return "".join(stripped_characters)
+
+
+def split_oracle_clauses(oracle_text: str) -> tuple[str, ...]:
+    """Return reminder-free clauses that regex gaps cannot cross."""
+    rules_text = strip_reminder_text(oracle_text).casefold()
+    return tuple(
+        clause.strip()
+        for clause in ORACLE_CLAUSE_BOUNDARY.split(rules_text)
+        if clause.strip()
+    )
+
+
+def get_theme_matches(
+    oracle_text: str,
+    type_line: str,
+    keywords: list[str],
+) -> dict[str, list[str]]:
+    """Return the source-aware rules that matched each assigned theme."""
+    type_text = type_line.casefold()
+    oracle_clauses = split_oracle_clauses(oracle_text)
+    keyword_set = {
+        str(keyword).casefold()
+        for keyword in keywords
+    }
+    matches_by_theme: dict[str, list[str]] = {}
+
+    for theme in THEME_ORDER:
+        matches: list[str] = []
+
+        matches.extend(
+            pattern
+            for pattern in THEME_TYPE_RULES.get(theme, ())
+            if re.search(pattern, type_text)
+        )
+        matches.extend(
+            pattern
+            for pattern in THEME_ORACLE_RULES.get(theme, ())
+            if any(
+                re.search(pattern, clause)
+                for clause in oracle_clauses
+            )
+        )
+        matches.extend(
+            keyword
+            for keyword in THEME_KEYWORD_RULES.get(theme, ())
+            if keyword in keyword_set
+        )
+
+        if matches:
+            matches_by_theme[theme] = matches
+
+    if (
+        "reanimator" in matches_by_theme
+        and matches_by_theme.get("graveyard") == [GRAVEYARD_USE_PATTERN]
+    ):
+        del matches_by_theme["graveyard"]
+
+    return matches_by_theme
+
+
 def classify_themes(
     oracle_text: str,
     type_line: str,
     keywords: list[str],
 ) -> list[str]:
     """
-    Apply simple keyword rules to assign themes.
-
-    This is intentionally a first-version classifier.
+    Apply source-aware, clause-bounded rules to assign themes.
     """
-    searchable_text = " ".join(
-        (type_line, oracle_text, *keywords)
-    ).casefold()
-    themes: list[str] = []
-
-    for theme, phrases in THEME_RULES.items():
-        if any(phrase in searchable_text for phrase in phrases):
-            themes.append(theme)
-
-    return themes
+    return list(get_theme_matches(
+        oracle_text,
+        type_line,
+        keywords,
+    ))
 
 
 def is_commander(card: dict[str, Any]) -> bool:

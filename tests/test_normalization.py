@@ -16,6 +16,7 @@ from scripts.process_scryfall import (
     normalize_card,
     normalize_lookup_name,
     process_cards,
+    strip_reminder_text,
 )
 
 
@@ -206,7 +207,7 @@ class ThemeClassificationTests(unittest.TestCase):
         )
         self.assertIn("wheels", themes)
 
-    def test_classifies_aristocrats_and_sacrifice_text(self) -> None:
+    def test_classifies_sacrifice_payoff_as_aristocrats_only(self) -> None:
         themes = classify_themes(
             oracle_text=(
                 "Whenever you sacrifice another permanent, each opponent "
@@ -216,7 +217,7 @@ class ThemeClassificationTests(unittest.TestCase):
             keywords=[],
         )
         self.assertIn("aristocrats", themes)
-        self.assertIn("sacrifice", themes)
+        self.assertNotIn("sacrifice", themes)
 
     def test_classifies_keywords(self) -> None:
         themes = classify_themes(
@@ -230,14 +231,247 @@ class ThemeClassificationTests(unittest.TestCase):
             "plus_one_counters",
         }.issubset(themes))
 
-    def test_classifies_overlapping_graveyard_themes(self) -> None:
+    def test_reanimator_evidence_is_not_double_counted_as_graveyard(self) -> None:
         themes = classify_themes(
-            oracle_text="Return a creature card from your graveyard.",
+            oracle_text=(
+                "Return a creature card from your graveyard "
+                "to the battlefield."
+            ),
             type_line="Sorcery",
             keywords=[],
         )
         self.assertIn("reanimator", themes)
-        self.assertIn("graveyard", themes)
+        self.assertNotIn("graveyard", themes)
+
+    def test_strips_nested_reminder_text(self) -> None:
+        self.assertEqual(
+            strip_reminder_text(
+                "Investigate. (Create a Clue token. "
+                "(It is an artifact.) Draw a card.)"
+            ),
+            "Investigate. ",
+        )
+
+    def test_food_creation_is_tokens_and_lifegain(self) -> None:
+        themes = classify_themes(
+            oracle_text=(
+                "Create a Food token. (It's an artifact with "
+                '"{2}, {T}, Sacrifice this token: You gain 3 life.")'
+            ),
+            type_line="Sorcery",
+            keywords=[],
+        )
+
+        self.assertEqual(set(themes), {"tokens", "lifegain"})
+
+    def test_treasure_creation_is_tokens_only(self) -> None:
+        themes = classify_themes(
+            oracle_text=(
+                "Create a Treasure token. (It's an artifact with "
+                '"{T}, Sacrifice this token: Add one mana of any color.")'
+            ),
+            type_line="Sorcery",
+            keywords=[],
+        )
+
+        self.assertEqual(themes, ["tokens"])
+
+    def test_treasure_with_explicit_artifact_synergy_adds_artifacts(self) -> None:
+        themes = classify_themes(
+            oracle_text=(
+                "Create a Treasure token. Whenever an artifact enters "
+                "under your control, draw a card."
+            ),
+            type_line="Enchantment",
+            keywords=[],
+        )
+
+        self.assertEqual(
+            set(themes),
+            {"tokens", "artifacts", "card_draw"},
+        )
+
+    def test_investigate_reminder_text_only_adds_tokens(self) -> None:
+        themes = classify_themes(
+            oracle_text=(
+                "Investigate. (Create a Clue token. It's an artifact with "
+                '"{2}, Sacrifice this token: Draw a card.")'
+            ),
+            type_line="Instant",
+            keywords=["Investigate"],
+        )
+
+        self.assertEqual(themes, ["tokens"])
+
+    def test_explicit_clue_payoff_adds_its_actual_themes(self) -> None:
+        themes = classify_themes(
+            oracle_text=(
+                "Investigate. Whenever you sacrifice a Clue, "
+                "draw two cards."
+            ),
+            type_line="Enchantment",
+            keywords=["Investigate"],
+        )
+
+        self.assertEqual(
+            set(themes),
+            {"tokens", "card_draw", "aristocrats"},
+        )
+
+    def test_generic_artifact_type_line_adds_artifacts(self) -> None:
+        themes = classify_themes(
+            oracle_text="{T}: Add {C}.",
+            type_line="Artifact",
+            keywords=[],
+        )
+
+        self.assertEqual(themes, ["artifacts"])
+
+    def test_clause_bounded_patterns_do_not_cross_sentences(self) -> None:
+        themes = classify_themes(
+            oracle_text=(
+                "Whenever you cast a creature spell, scry 1. "
+                "Noncreature spells cost {1} more to cast."
+            ),
+            type_line="Enchantment",
+            keywords=[],
+        )
+
+        self.assertNotIn("spellslinger", themes)
+
+    def test_proxy_keywords_do_not_add_unrelated_themes(self) -> None:
+        examples = {
+            "Convoke": "tokens",
+            "Casualty": "sacrifice",
+            "Emerge": "sacrifice",
+            "Offering": "sacrifice",
+            "Revolt": "aristocrats",
+        }
+
+        for keyword, excluded_theme in examples.items():
+            with self.subTest(keyword=keyword):
+                themes = classify_themes(
+                    oracle_text="",
+                    type_line="Creature",
+                    keywords=[keyword],
+                )
+                self.assertNotIn(excluded_theme, themes)
+
+    def test_mill_requires_collection_relevant_subject(self) -> None:
+        self.assertNotIn(
+            "graveyard",
+            classify_themes(
+                "Target opponent mills three cards.",
+                "Sorcery",
+                ["Mill"],
+            ),
+        )
+        self.assertIn(
+            "graveyard",
+            classify_themes(
+                "You mill three cards.",
+                "Sorcery",
+                ["Mill"],
+            ),
+        )
+
+    def test_repeatable_sacrifice_outlet_adds_sacrifice(self) -> None:
+        themes = classify_themes(
+            oracle_text="Sacrifice another creature: Draw a card.",
+            type_line="Enchantment",
+            keywords=[],
+        )
+
+        self.assertIn("sacrifice", themes)
+        self.assertIn("card_draw", themes)
+
+    def test_repeated_commanders_lose_incidental_theme_tags(self) -> None:
+        examples = {
+            "Tamiyo": {
+                "oracle_text": (
+                    "Flying\nWhenever Tamiyo attacks, investigate. "
+                    "(Create a Clue token. It's an artifact with "
+                    '"{2}, Sacrifice this token: Draw a card.")\n'
+                    "When you draw your third card in a turn, exile Tamiyo, "
+                    "then return her to the battlefield transformed.\n//\n"
+                    "−3: Return target instant or sorcery card from your "
+                    "graveyard to your hand.\n−7: Draw cards equal to half "
+                    "the number of cards in your library, rounded up."
+                ),
+                "type_line": (
+                    "Legendary Creature — Moonfolk Wizard // "
+                    "Legendary Planeswalker — Tamiyo"
+                ),
+                "keywords": ["Investigate"],
+                "expected": {
+                    "graveyard",
+                    "tokens",
+                    "spellslinger",
+                    "card_draw",
+                },
+            },
+            "Eloise": {
+                "oracle_text": (
+                    "Whenever another creature you control dies, "
+                    "investigate. (Create a Clue token. It's an artifact "
+                    'with "{2}, Sacrifice this token: Draw a card.")\n'
+                    "Whenever you sacrifice a token, surveil 1."
+                ),
+                "type_line": "Legendary Creature — Human Rogue",
+                "keywords": ["Investigate", "Surveil"],
+                "expected": {"graveyard", "tokens", "aristocrats"},
+            },
+            "Lazav": {
+                "oracle_text": (
+                    "Whenever Lazav attacks, exile target card from a "
+                    "graveyard, then investigate. (Create a Clue token. "
+                    "It's an artifact with "
+                    '"{2}, Sacrifice this token: Draw a card.")\n'
+                    "Whenever you sacrifice a Clue, Lazav may become a copy "
+                    "of a creature card exiled with it."
+                ),
+                "type_line": "Legendary Creature — Shapeshifter Detective",
+                "keywords": ["Investigate"],
+                "expected": {"graveyard", "tokens", "aristocrats"},
+            },
+            "Sauron": {
+                "oracle_text": (
+                    "Ward—Sacrifice a legendary artifact or legendary "
+                    "creature.\nWhenever an opponent casts a spell, "
+                    "amass Orcs 1.\nWhenever the Ring tempts you, you may "
+                    "discard your hand. If you do, draw four cards."
+                ),
+                "type_line": "Legendary Creature — Avatar Horror",
+                "keywords": ["Amass"],
+                "expected": {"tokens", "card_draw"},
+            },
+            "Dennick": {
+                "oracle_text": (
+                    "Lifelink\nCards in graveyards can't be the targets of "
+                    "spells or abilities.\nDisturb {2}{W}{U} (You may cast "
+                    "this card from your graveyard transformed.)\n//\n"
+                    "Whenever one or more creature cards are put into "
+                    "graveyards from anywhere, investigate. (Create a Clue "
+                    "token. It's an artifact with "
+                    '"{2}, Sacrifice this token: Draw a card.")'
+                ),
+                "type_line": (
+                    "Legendary Creature — Human Soldier // "
+                    "Legendary Creature — Spirit Soldier"
+                ),
+                "keywords": ["Lifelink", "Investigate", "Disturb"],
+                "expected": {"graveyard", "tokens", "lifegain"},
+            },
+        }
+
+        for name, example in examples.items():
+            with self.subTest(commander=name):
+                themes = classify_themes(
+                    example["oracle_text"],
+                    example["type_line"],
+                    example["keywords"],
+                )
+                self.assertEqual(set(themes), example["expected"])
 
     def test_leaves_unrelated_card_untagged(self) -> None:
         themes = classify_themes(

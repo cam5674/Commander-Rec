@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote
 from .data_loader import get_cards_by_id, get_commanders, get_name_to_id
-from scripts.process_scryfall import THEME_RULES
+from scripts.process_scryfall import get_theme_matches
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 CSV_PATH = PROJECT_ROOT / "data" / "raw" / "test_collection.csv"
@@ -45,17 +45,11 @@ def print_theme_matches(
         if card is None or theme not in card.get("themes", []):
             continue
 
-        searchable_text = " ".join((
-            card.get("type_line", ""),
+        matched_triggers = get_theme_matches(
             card.get("oracle_text", ""),
-            *card.get("keywords", []),
-        )).casefold()
-
-        matched_triggers = [
-            trigger
-            for trigger in THEME_RULES[theme]
-            if trigger in searchable_text
-        ]
+            card.get("type_line", ""),
+            card.get("keywords", []),
+        ).get(theme, [])
 
         matches.append((card["name"], matched_triggers))
 
