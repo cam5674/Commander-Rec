@@ -3,12 +3,14 @@ import type { AppConfig } from '../types/api';
 import { CSV_FORMAT_HINT } from '../content/csvFormat';
 import { getThemeLabel } from '../content/themeLabels';
 import { Button } from './Button';
+import { TextLink } from './TextLink';
 
 interface UploadSectionProps {
   config: AppConfig | null;
   selectedFile: File | null;
   onFileSelect: (file: File | null) => void;
   onSubmit: (file: File) => void;
+  onTrySample: () => void;
 }
 
 // A representative subset (not the full internal theme list) — enough to
@@ -49,7 +51,13 @@ function validateFile(file: File, config: AppConfig): string | null {
   return null;
 }
 
-export function UploadSection({ config, selectedFile, onFileSelect, onSubmit }: UploadSectionProps) {
+export function UploadSection({
+  config,
+  selectedFile,
+  onFileSelect,
+  onSubmit,
+  onTrySample,
+}: UploadSectionProps) {
   const [localError, setLocalError] = useState<string | null>(null);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
 
@@ -124,6 +132,11 @@ export function UploadSection({ config, selectedFile, onFileSelect, onSubmit }: 
 
         <p className="text-sm text-ink-secondary">
           {CSV_FORMAT_HINT} Or drag and drop a CSV file anywhere in this box.
+        </p>
+
+        <p className="text-sm text-ink-secondary">
+          Don&apos;t have a collection handy?{' '}
+          <TextLink onClick={onTrySample}>Try a sample collection</TextLink>
         </p>
 
         {localError && (

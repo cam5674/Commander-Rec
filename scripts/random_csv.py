@@ -5,6 +5,9 @@ Examples:
     python -m scripts.random_csv --profile boundary --rows 20000
     python -m scripts.random_csv --profile warnings --invalid-rate 0.2
     python -m scripts.random_csv --themes graveyard tokens --colors B G
+    python -m scripts.random_csv --profile random --seed 123
+    python -m scripts.random_csv --themes graveyard tokens --theme-ratio 0.9 --colors B G --rows 1000 --seed 42
+
 """
 
 import argparse
@@ -31,10 +34,10 @@ VALID_COLORS = frozenset("WUBRG")
 
 PROFILE_DEFAULTS = {
     "showcase": {
-        "rows": 500,
-        "themes": ("graveyard", "tokens"),
+        "rows": 1550,
+        "themes": ("wheels", "spellslinger", "card_draw", "graveyard", "tokens", "lifegain"),
         "theme_ratio": 0.85,
-        "commander_count": 25,
+        "commander_count": 50,
         "duplicate_rate": 0.05,
         "invalid_rate": 0.0,
     },

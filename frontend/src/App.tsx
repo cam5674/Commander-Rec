@@ -9,6 +9,7 @@ import { RecommendationCard } from './components/RecommendationCard';
 import { UnmatchedCardsNotice } from './components/UnmatchedCardsNotice';
 import { EmptyRecommendations } from './components/EmptyRecommendations';
 import { Button } from './components/Button';
+import { TextLink } from './components/TextLink';
 import { formatThemeList, getThemeLabel } from './content/themeLabels';
 import { buildRecommendationPresentations } from './content/recommendationPresentation';
 
@@ -24,6 +25,28 @@ const NETWORK_ERROR_DETAIL: APIErrorDetail = {
   warnings: [],
 };
 
+// Bundled as a static frontend asset (frontend/public/samples), not served
+// by the API — fetched client-side and funneled through the exact same
+// submitCollection() request as a user-selected file.
+const SAMPLE_CSV_PATH = '/samples/showcase.csv';
+const SAMPLE_CSV_FILENAME = 'showcase-collection.csv';
+
+const SAMPLE_LOAD_ERROR_DETAIL: APIErrorDetail = {
+  code: 'SAMPLE_LOAD_ERROR',
+  message: 'Could not load the sample collection. Try again, or upload your own CSV.',
+  unmatched_names: [],
+  warnings: [],
+};
+
+async function loadSampleFile(): Promise<File> {
+  const response = await fetch(SAMPLE_CSV_PATH);
+  if (!response.ok) {
+    throw new Error(`Failed to load sample CSV (${response.status})`);
+  }
+  const blob = await response.blob();
+  return new File([blob], SAMPLE_CSV_FILENAME, { type: 'text/csv' });
+}
+
 function App() {
   const [config, setConfig] = useState<AppConfig | null>(null);
   const [viewState, setViewState] = useState<ViewState>('idle');
@@ -31,6 +54,7 @@ function App() {
   const [errorInfo, setErrorInfo] = useState<APIErrorDetail | null>(null);
   const [themeFilter, setThemeFilter] = useState<string | null>(null);
   const [visibleCount, setVisibleCount] = useState(DEFAULT_VISIBLE_COUNT);
+  const [isSampleResult, setIsSampleResult] = useState(false);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
   const errorContainerRef = useRef<HTMLDivElement>(null);
 
@@ -55,18 +79,44 @@ function App() {
     }
   }, [viewState]);
 
-  const handleSubmit = async (file: File) => {
-    setViewState('loading');
-    setErrorInfo(null);
-
+  // Shared by both the real upload and the sample trigger — same request,
+  // same loading/error/results handling either way. The only thing that
+  // differs between the two callers is how the File object was obtained.
+  const submitFile = async (file: File, isSample: boolean) => {
     try {
       const result = await submitCollection(file);
       setResponseData(result);
       setThemeFilter(null);
       setVisibleCount(DEFAULT_VISIBLE_COUNT);
+      setIsSampleResult(isSample);
       setViewState('results');
     } catch (error) {
       setErrorInfo(error instanceof APIError ? error.detail : NETWORK_ERROR_DETAIL);
+      setViewState('error');
+    }
+  };
+
+  const handleSubmit = async (file: File) => {
+    setViewState('loading');
+    setErrorInfo(null);
+    await submitFile(file, false);
+  };
+
+  const handleTrySample = async () => {
+    // Flips to 'loading' before anything async runs, same as handleSubmit —
+    // UploadSection (and this trigger with it) unmounts on the next render,
+    // which is what guards against a second click firing mid-request rather
+    // than a dedicated isSubmitting flag.
+    setViewState('loading');
+    setErrorInfo(null);
+
+    try {
+      const sampleFile = await loadSampleFile();
+      await submitFile(sampleFile, true);
+    } catch {
+      // Only reached if fetching the bundled asset itself failed —
+      // submitFile handles its own submission errors internally.
+      setErrorInfo(SAMPLE_LOAD_ERROR_DETAIL);
       setViewState('error');
     }
   };
@@ -77,6 +127,7 @@ function App() {
     setErrorInfo(null);
     setThemeFilter(null);
     setVisibleCount(DEFAULT_VISIBLE_COUNT);
+    setIsSampleResult(false);
     setSelectedFile(null);
   };
 
@@ -144,6 +195,7 @@ function App() {
             selectedFile={selectedFile}
             onFileSelect={setSelectedFile}
             onSubmit={handleSubmit}
+            onTrySample={handleTrySample}
           />
         )}
 
@@ -167,6 +219,13 @@ function App() {
                   Upload Another Collection
                 </Button>
                 <div>
+                  {isSampleResult && (
+                    <p className="mb-1">
+                      <span className="rounded bg-surface-overlay px-2 py-1 text-xs text-ink-secondary">
+                        Sample collection
+                      </span>
+                    </p>
+                  )}
                   <p className="text-sm text-ink-secondary">
                     Found {responseData.recommendations.length} recommendation(s) from{' '}
                     {responseData.unique_cards} unique cards ({responseData.total_cards} total).
@@ -212,13 +271,7 @@ function App() {
                 {themeFilter && (
                   <div className="mb-3 flex items-center gap-2 text-xs text-ink-secondary">
                     <span>Filtering by {getThemeLabel(themeFilter)}</span>
-                    <button
-                      type="button"
-                      onClick={() => setThemeFilter(null)}
-                      className="font-medium text-brand-action"
-                    >
-                      Clear
-                    </button>
+                    <TextLink onClick={() => setThemeFilter(null)}>Clear</TextLink>
                   </div>
                 )}
 

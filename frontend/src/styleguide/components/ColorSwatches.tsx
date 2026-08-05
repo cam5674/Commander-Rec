@@ -1,4 +1,5 @@
 import { Button } from '../../components/Button';
+import { TextLink } from '../../components/TextLink';
 
 interface SwatchToken {
   name: string;
@@ -89,9 +90,7 @@ export function ColorSwatches() {
         </h3>
         <div className="flex flex-wrap items-center gap-6">
           <Button type="button">Primary button (brand-action)</Button>
-          <a href="#" className="text-sm font-medium text-brand-action underline">
-            Link example (brand-action)
-          </a>
+          <TextLink className="text-sm">Link example (brand-action)</TextLink>
           <div className="w-40">
             <div className="h-16 w-full rounded ring-1 ring-line-default bg-mana-gold" />
             <p className="mt-2 text-sm font-medium text-ink-primary">mana-gold</p>
