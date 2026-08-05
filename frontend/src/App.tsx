@@ -213,8 +213,17 @@ function App() {
               Commander recommendations
             </h2>
 
-            <div className="flex justify-center lg:sticky lg:top-4 lg:z-30">
-              <div className="flex max-w-full flex-col items-center gap-2 rounded border border-line-default bg-surface-base/95 p-3 text-center shadow-lg">
+            {/* This wrapper spans the full row width so its child can be
+                centered, but at lg: it's also `sticky` — meaning that full
+                width becomes a real, stacked-above-the-grid hit-testable box
+                as the page scrolls, even though only the centered child is
+                painted. Without `pointer-events-none` here, the transparent
+                margins on either side of that child silently swallow clicks
+                on whatever card row happens to scroll underneath (confirmed
+                via elementFromPoint, not just visually) — `pointer-events-
+                auto` on the child alone restores clickability there. */}
+            <div className="pointer-events-none flex justify-center lg:sticky lg:top-4 lg:z-30">
+              <div className="pointer-events-auto flex max-w-full flex-col items-center gap-2 rounded border border-line-default bg-surface-base/95 p-3 text-center shadow-lg">
                 <Button type="button" onClick={handleReset} className="shrink-0">
                   Upload Another Collection
                 </Button>
