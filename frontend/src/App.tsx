@@ -255,25 +255,23 @@ function App() {
             </div>
 
             {/* The sidebar stays stacked through md: two cards plus a sidebar
-                would make each horizontal card too narrow at tablet widths. */}
+                would make each horizontal card too narrow at tablet widths.
+                Main content renders before the aside in the DOM (rather than
+                using lg:order-* to visually reorder them) so tab order and
+                reading order always agree with what's on screen at every
+                breakpoint — the recommendation grid is the focal content and
+                the notices sidebar is secondary, both in reading priority
+                and in this element order. This is a deliberate, minimal
+                change from the prior stacked-mobile arrangement (which had
+                the aside above the grid, sourced from the old order-driven
+                DOM position) to one consistent order everywhere. */}
             <div
               className={`flex flex-col gap-6 ${
                 hasCollectionNotices ? 'lg:flex-row lg:items-start lg:gap-8' : ''
               }`}
             >
-              {hasCollectionNotices && (
-                <aside className="flex flex-col gap-4 lg:order-2 lg:w-64 lg:shrink-0">
-                  <UnmatchedCardsNotice
-                    unmatchedNames={responseData.unmatched_names}
-                    warnings={responseData.warnings}
-                    defaultExpanded={shouldEmphasizeUnmatched}
-                    emphasized={shouldEmphasizeUnmatched}
-                  />
-                </aside>
-              )}
-
               <div
-                className={`min-w-0 flex-1 lg:order-1 ${
+                className={`min-w-0 flex-1 ${
                   hasCollectionNotices ? '' : 'mx-auto w-full max-w-5xl'
                 }`}
               >
@@ -316,6 +314,17 @@ function App() {
                   </>
                 )}
               </div>
+
+              {hasCollectionNotices && (
+                <aside className="flex flex-col gap-4 lg:w-64 lg:shrink-0">
+                  <UnmatchedCardsNotice
+                    unmatchedNames={responseData.unmatched_names}
+                    warnings={responseData.warnings}
+                    defaultExpanded={shouldEmphasizeUnmatched}
+                    emphasized={shouldEmphasizeUnmatched}
+                  />
+                </aside>
+              )}
             </div>
           </section>
         )}

@@ -18,10 +18,26 @@ const MANA_LABEL: Record<string, string> = {
   G: 'Green',
 };
 
-// A thin proportional strip rather than overlaid pips — same color-identity
-// information, without visually competing with the card art underneath it.
-// Relies on a clipping container (overflow-hidden + rounded) to match the
-// card's corners; this component just fills the strip's own bounds.
+// Per-segment text color, chosen per mana fill so the WUBRG letter itself
+// clears AA (4.5:1) against its own background — verified against the
+// actual token values in tokens.css, not assumed:
+//   W ink-on-mana 15.48:1 · U ink-primary 4.83:1 · B ink-primary 5.21:1
+//   R ink-primary 4.55:1 · G ink-on-mana 4.64:1 · colorless ink-on-mana 6.57:1
+// Both text colors are existing tokens (no new values introduced).
+const MANA_TEXT: Record<string, string> = {
+  W: 'text-ink-on-mana',
+  U: 'text-ink-primary',
+  B: 'text-ink-primary',
+  R: 'text-ink-primary',
+  G: 'text-ink-on-mana',
+};
+
+// A thin proportional strip with a letter per segment — color is never the
+// only signal for color identity (adjacent WUBRG hues can sit within ~1:1
+// contrast of each other, indistinguishable for colorblind users without
+// this). Segment dividers use surface-base, which clears the 3:1
+// non-text/graphical-object minimum against every mana fill, so segment
+// boundaries are visible even when two adjacent hues read as near-identical.
 export function ColorIdentityStrip({ colorIdentity }: ColorIdentityStripProps) {
   const isColorless = colorIdentity.length === 0;
   const label = isColorless
@@ -29,16 +45,27 @@ export function ColorIdentityStrip({ colorIdentity }: ColorIdentityStripProps) {
     : `Color identity: ${colorIdentity.map((color) => MANA_LABEL[color] ?? color).join(', ')}`;
 
   return (
-    <div role="img" aria-label={label} className="flex h-2 w-full">
+    <div role="img" aria-label={label} className="flex h-6 w-full overflow-hidden rounded">
       {isColorless ? (
-        <span aria-hidden="true" className="h-full flex-1 bg-mana-colorless" />
+        <span
+          aria-hidden="true"
+          className="flex h-full flex-1 items-center justify-center bg-mana-colorless text-xs font-semibold text-ink-on-mana"
+        >
+          C
+        </span>
       ) : (
         colorIdentity.map((color, index) => (
           <span
             key={`${color}-${index}`}
             aria-hidden="true"
-            className={`h-full flex-1 ${MANA_FILL[color] ?? 'bg-mana-colorless'}`}
-          />
+            className={`flex h-full flex-1 items-center justify-center text-xs font-semibold ${
+              MANA_FILL[color] ?? 'bg-mana-colorless'
+            } ${MANA_TEXT[color] ?? 'text-ink-on-mana'} ${
+              index < colorIdentity.length - 1 ? 'border-r border-surface-base' : ''
+            }`}
+          >
+            {color}
+          </span>
         ))
       )}
     </div>

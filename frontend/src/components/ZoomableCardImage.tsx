@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { toArtCropUrl, toLargeUrl } from '../content/scryfallImage';
-import { ColorIdentityStrip } from './ColorIdentityStrip';
 
 interface ZoomableCardImageProps {
   imageUrl: string | null;
   scryfallUrl: string;
   name: string;
-  colorIdentity: string[];
 }
 
 interface OverlayPosition {
@@ -39,7 +37,7 @@ function computePosition(triggerRect: DOMRect): OverlayPosition {
 // desktop and tap-the-icon on touch (no hover). The rest of a
 // RecommendationCard (name/badges/"Show details") has its own separate
 // click handling untouched by this component — see report.
-export function ZoomableCardImage({ imageUrl, scryfallUrl, name, colorIdentity }: ZoomableCardImageProps) {
+export function ZoomableCardImage({ imageUrl, scryfallUrl, name }: ZoomableCardImageProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [position, setPosition] = useState<OverlayPosition | null>(null);
@@ -97,9 +95,6 @@ export function ZoomableCardImage({ imageUrl, scryfallUrl, name, colorIdentity }
     return (
       <div className="w-32 shrink-0">
         <div className="aspect-art overflow-hidden rounded bg-surface-overlay" />
-        <div className="mt-1 overflow-hidden rounded">
-          <ColorIdentityStrip colorIdentity={colorIdentity} />
-        </div>
       </div>
     );
   }
@@ -138,10 +133,6 @@ export function ZoomableCardImage({ imageUrl, scryfallUrl, name, colorIdentity }
             <line x1="16.5" y1="16.5" x2="12.5" y2="12.5" />
           </svg>
         </button>
-      </div>
-
-      <div className="mt-1 overflow-hidden rounded">
-        <ColorIdentityStrip colorIdentity={colorIdentity} />
       </div>
 
       {isOpen && position && (

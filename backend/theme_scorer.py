@@ -234,7 +234,6 @@ def get_theme_supporting_cards(
         supporting_cards.append({
             "oracle_id": oracle_id,
             "scryfall_id": card.get("scryfall_id"),
-            "scryfall_url": get_scryfall_card_url(oracle_id),
             "image_url": card.get("image"),
             "name": card["name"],
             "quantity": quantity,
@@ -252,7 +251,18 @@ def get_theme_supporting_cards(
         )
     )
 
-    return len(supporting_cards), supporting_cards[:limit]
+    return len(supporting_cards), [
+        {
+            "oracle_id": card["oracle_id"],
+            "scryfall_id": card["scryfall_id"],
+            "scryfall_url": get_scryfall_card_url(card["oracle_id"]),
+            "image_url": card["image_url"],
+            "name": card["name"],
+            "quantity": card["quantity"],
+            "edhrec_rank": card["edhrec_rank"],
+        }
+        for card in supporting_cards[:limit]
+    ]
 
 
 def get_commander_candidates(
@@ -378,6 +388,19 @@ def rank_commanders(
         for theme in top_themes
     )
 
+    eligible_candidates = [
+        candidate
+        for candidate in candidates
+        if (
+            sum(
+                theme_scores.get(theme, 0)
+                for theme in candidate["matching_themes"]
+            ) / top_theme_total
+            if top_theme_total
+            else 0.0
+        ) >= min_theme_ratio
+    ]
+
     ranked_commanders = [
         score_commander_candidate(
             candidate,
@@ -386,19 +409,10 @@ def rank_commanders(
             collection,
             cards_by_id,
         )
-        for candidate in candidates
-    ]
-    eligible_commanders = [
-        commander
-        for commander in ranked_commanders
-        if (
-            commander["theme_match_score"] / top_theme_total
-            if top_theme_total
-            else 0.0
-        ) >= min_theme_ratio
+        for candidate in eligible_candidates
     ]
 
-    eligible_commanders.sort(
+    ranked_commanders.sort(
         key=lambda commander: (
             -commander["score_breakdown"]["final_score"],
             (
@@ -420,7 +434,7 @@ def rank_commanders(
                 cards_by_id,
             ),
         }
-        for commander in eligible_commanders[:top_n]
+        for commander in ranked_commanders[:top_n]
     ]
 
 def recommend_commanders(

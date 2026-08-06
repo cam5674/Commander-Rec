@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from backend.theme_scorer import (
     MAX_RECOMMENDATIONS,
@@ -8,6 +9,7 @@ from backend.theme_scorer import (
     calculate_theme_scores,
     get_commander_candidates,
     get_score_breakdown,
+    get_theme_supporting_cards,
     normalize_color_identity,
     rank_commanders,
     recommend_commanders,
@@ -267,6 +269,42 @@ class ThemeScorerTests(unittest.TestCase):
         )
 
         self.assertEqual(ratio, 2 / 3)
+
+    def test_supporting_card_urls_are_built_after_limiting(self) -> None:
+        collection = {
+            f"oracle-support-{index}": 1
+            for index in range(7)
+        }
+        cards_by_id = {
+            oracle_id: {
+                "name": f"Support {index}",
+                "themes": ["tokens"],
+                "color_identity": [],
+                "edhrec_rank": index + 1,
+            }
+            for index, oracle_id in enumerate(collection)
+        }
+
+        with patch(
+            "backend.theme_scorer.get_scryfall_card_url",
+            side_effect=lambda oracle_id: f"https://example.com/{oracle_id}",
+        ) as url_builder:
+            count, supporting_cards = get_theme_supporting_cards(
+                "oracle-commander",
+                "tokens",
+                collection,
+                cards_by_id,
+                set(),
+                limit=5,
+            )
+
+        self.assertEqual(count, 7)
+        self.assertEqual(len(supporting_cards), 5)
+        self.assertEqual(url_builder.call_count, 5)
+        self.assertEqual(
+            [card["oracle_id"] for card in supporting_cards],
+            [f"oracle-support-{index}" for index in range(5)],
+        )
 
 
 class CommanderRankingTests(unittest.TestCase):
@@ -558,6 +596,47 @@ class CommanderRankingTests(unittest.TestCase):
         self.assertEqual(
             [commander["name"] for commander in ranked],
             ["Popular Commander", "Unranked Commander"],
+        )
+
+    def test_color_fit_is_only_calculated_for_eligible_candidates(self) -> None:
+        candidates = [
+            {
+                "oracle_id": "oracle-eligible",
+                "name": "Eligible Commander",
+                "matching_themes": ["artifacts", "tokens"],
+                "edhrec_rank": None,
+                "color_identity": [],
+            },
+            {
+                "oracle_id": "oracle-ineligible",
+                "name": "Ineligible Commander",
+                "matching_themes": ["artifacts"],
+                "edhrec_rank": None,
+                "color_identity": [],
+            },
+        ]
+
+        with patch(
+            "backend.theme_scorer.calculate_color_compatibility_ratio",
+            return_value=0.5,
+        ) as color_ratio:
+            ranked = rank_commanders(
+                candidates,
+                {"artifacts": 4, "tokens": 6},
+                ["artifacts", "tokens"],
+                {},
+                {},
+                min_theme_ratio=MIN_THEME_MATCH_RATIO,
+            )
+
+        self.assertEqual(
+            [commander["oracle_id"] for commander in ranked],
+            ["oracle-eligible"],
+        )
+        color_ratio.assert_called_once()
+        self.assertEqual(
+            color_ratio.call_args.args[0]["oracle_id"],
+            "oracle-eligible",
         )
 
     def test_recommendations_require_sixty_percent_theme_match(self) -> None:

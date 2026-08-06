@@ -1,5 +1,6 @@
 import { useId, useState } from 'react';
 import { ZoomableCardImage } from './ZoomableCardImage';
+import { ColorIdentityStrip } from './ColorIdentityStrip';
 import { CardHoverPreview } from './CardHoverPreview';
 import { getThemeLabel } from '../content/themeLabels';
 import type { RecommendationPresentation } from '../content/recommendationPresentation';
@@ -74,7 +75,6 @@ export function RecommendationCard({
             imageUrl={image_url}
             scryfallUrl={scryfall_url}
             name={name}
-            colorIdentity={color_identity}
           />
           <span
             className="absolute left-1 top-1 rounded bg-surface-base/80 px-1.5 py-0.5 text-xs font-semibold text-ink-primary"
@@ -156,10 +156,14 @@ export function RecommendationCard({
           0fr->1fr transition below has something to animate — a
           conditionally-rendered element has no "before" state to
           transition from on mount. aria-hidden keeps it out of the
-          accessibility tree while collapsed regardless. */}
+          accessibility tree while collapsed; inert additionally drops it
+          out of the tab order while collapsed — aria-hidden alone clips
+          the content visually/for AT but a zero-height grid track doesn't
+          stop its links from still being real tab stops. */}
       <div
         id={detailsId}
         aria-hidden={!isExpanded}
+        inert={!isExpanded}
         className={`grid transition-[grid-template-rows] duration-200 ease-out motion-reduce:transition-none ${
           isExpanded ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
         }`}
@@ -167,8 +171,13 @@ export function RecommendationCard({
         <div className="overflow-hidden">
           {/* Expanded-state content: drilled-in detail, visually
               de-emphasized (text-xs, muted ink) relative to the collapsed
-              content above. */}
+              content above. Color identity is first, directly under the
+              image column's width, per the design spec. */}
           <div className="mt-3 flex flex-col gap-3 border-t border-dashed border-line-subtle pt-3 text-xs text-ink-muted">
+            <div className="w-32">
+              <ColorIdentityStrip colorIdentity={color_identity} />
+            </div>
+
             <div className="flex flex-col gap-1">
               <p className="font-medium text-ink-secondary">Score breakdown</p>
               <ScoreBar label="Overall theme match" ratio={score_breakdown.theme_ratio} />
