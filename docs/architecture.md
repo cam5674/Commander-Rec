@@ -27,6 +27,14 @@ flowchart LR
     M --> F
 ```
 
+This diagram describes the implemented application flow independently of its
+hosting environment. The repository currently runs FastAPI/Uvicorn and Vite
+locally, reads reference JSON from `data/processed`, and uses localhost API and
+CORS settings. The S3, API Gateway, Lambda, and Mangum topology in the README is
+the target deployment architecture; its adapter, infrastructure configuration,
+production origins, and S3-backed reference-data loading are not implemented
+in this repository yet.
+
 ## Reference-Data Pipeline
 
 Run the pipeline from the repository root:
@@ -96,6 +104,26 @@ Regression fixtures in `tests/test_normalization.py` define the expected
 classification behavior. After changing theme rules, regenerate the processed
 JSON files and restart the backend so its cached reference data is refreshed.
 
+### Eligibility and Result Size
+
+A candidate must clear a raw theme-match threshold to be eligible for
+recommendation at all:
+
+```text
+theme_ratio = matched top-theme score / total top-five theme score
+```
+
+Candidates below `theme_ratio >= 0.60` are excluded before color compatibility
+and final-score calculation (see Performance below). This threshold is
+evaluated against the *raw* ratio, not the Laplace-smoothed one used for
+scoring and display (see Confidence-Adjusted Fit): eligibility asks whether a
+candidate is a genuine textual match; the smoothed score reflects confidence
+in that match.
+
+The endpoint returns up to 20 eligible candidates, sorted by final score.
+A collection with weak or scattered theme signal may legitimately return
+fewer than 20, or zero — this is expected behavior, not an error.
+
 ### Confidence-Adjusted Fit
 
 Theme and color fit use symmetric Laplace smoothing so very small collections
@@ -109,6 +137,29 @@ The raw theme ratio still determines eligibility at the 60% threshold; the
 smoothed ratio affects scoring and display confidence only. As evidence grows,
 the adjustment approaches the raw ratio. Small-evidence behavior is covered in
 `tests/test_theme_scorer.py`.
+
+### Performance
+
+Color-compatibility scoring (`calculate_color_compatibility_ratio()`) scans
+every unique card in the collection and is the most expensive operation per
+candidate. It runs only for candidates that have already cleared the raw
+60% theme-eligibility gate above, not for the full theme-matching candidate
+pool. This ordering matters: profiling a 20,000-row collection found 1,806
+theme-matching candidates, of which only 25 passed eligibility, so scoring
+color compatibility before filtering meant performing roughly 1,781
+unnecessary full-collection scans per request.
+
+Supporting-card evidence is sorted and limited to the retained set (5 per
+theme) before constructing Scryfall URLs for the response, rather than
+building URLs for every matching card and discarding most of them.
+
+Measured effect on the 20,000-row fixture (warm, in-process): median request
+time dropped from 10.50s to 0.573s. Response bodies remained byte-identical
+(SHA-256) for seeds 101, 202, 303, and 404 and the showcase collection. No
+aggregate or reusable supporting-evidence indexes were introduced; those are
+the next code-level optimization targets if the collection or commander pool
+grows. Lambda memory and timeout settings should be evaluated later with
+deployed benchmarks.
 
 ## Request Pipeline
 
@@ -166,13 +217,15 @@ process remains warm. User collection data is never placed in these caches.
 
 1. Calculates theme scores for the recognized collection.
 2. Selects the collection's strongest themes.
-3. Measures owned-card color compatibility.
-4. Builds candidates from all eligible commanders, not only owned cards.
-5. Excludes commanders requiring partners or backgrounds for the MVP.
-6. Scores candidates using theme fit, color compatibility, and EDHREC rank.
-7. Marks whether each recommended commander is owned.
-8. Adds matching themes and highly ranked supporting owned cards.
-9. Sorts candidates and returns the requested top results.
+3. Builds candidates from all Commander-eligible reference cards that match at
+   least one strongest theme, not only owned cards; commanders requiring a
+   partner or background are excluded, and ownership is recorded.
+4. Applies the raw 60% theme-eligibility gate (see Eligibility and Result
+   Size) before the more expensive color-compatibility calculation.
+5. Scores eligible candidates using smoothed theme fit, smoothed owned-card
+   color compatibility, and EDHREC rank.
+6. Sorts candidates deterministically and retains up to 20 results.
+7. Adds ranked supporting owned cards for each matching theme.
 
 Theme fit has more influence than color compatibility. EDHREC rank is a
 smaller popularity signal and a later tie-breaker rather than the primary
