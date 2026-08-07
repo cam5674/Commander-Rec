@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+
 from backend.csv_parser import CSVRowLimitError, parse_collection_bytes
 from backend.data_loader import (
     get_cards_by_id,
@@ -37,7 +38,6 @@ MAX_CSV_ROWS = 20_000
 ACCEPTED_FILE_EXTENSIONS = [".csv"]
 
 app = FastAPI(title="Commander Recommender")
-
 
 app.add_middleware(
     CORSMiddleware,

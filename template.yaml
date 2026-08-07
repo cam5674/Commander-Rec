@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+
+Resources:
+  ApiFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: makefile
+    Properties:
+      CodeUri: .
+      PackageType: Zip
+      Handler: backend.lambda_handler.handler
+      Runtime: python3.12
+      Architectures:
+        - arm64
+      MemorySize: 1024
+      Timeout: 10
+      Environment:
+        Variables:
+          REFERENCE_DATA_DIR: data/processed
+          ALLOWED_ORIGINS: >-
+            http://localhost:5173,http://127.0.0.1:5173
+          MAX_UPLOAD_BYTES: "4194304"
+      Events:
+        Config:
+          Type: HttpApi
+          Properties:
+            Path: /config
+            Method: GET
+        Recommendations:
+          Type: HttpApi
+          Properties:
+            Path: /recommendations
+            Method: POST

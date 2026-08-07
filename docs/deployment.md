@@ -79,23 +79,31 @@ Complete each checkpoint before beginning the next phase. Phase 0b is a branch
 from Phase 0, not a later enhancement. If its condition is met, change the API
 contract before Phase 1.
 
-## Phase 0: Required Measurements
+## Phase 0: Required Measurements — Provisionally Resolved
 
-### 1. Reference Data Size — Resolved
+### 1. Reference Data and Artifact Estimate — Provisionally Resolved
 
 The four files in `data/processed` total **31,469,912 bytes / 30.01 MiB**.
 This confirms that the reference-data portion fits the Lambda unzipped package
 limit.
 
-The complete artifact remains unmeasured. Record both compressed and
-uncompressed sizes after adding application code and Lambda runtime
-dependencies. See the [reference-data guide](deployment/reference-data.md).
+Current backend and script source files add approximately **76 KB**, while the
+installed packages representing the expected Lambda runtime dependencies add
+approximately **13.75 MiB** before Mangum. The resulting preliminary
+uncompressed estimate is approximately **43.84 MiB**. This is comfortably
+below Lambda's 250 MB uncompressed limit, but it is not the final artifact:
+record both compressed and uncompressed sizes after Phase 1 defines the
+focused dependency set and builds Linux arm64 packages. See the
+[reference-data guide](deployment/reference-data.md).
 
-### 2. Genuine 20,000-Row Export — Open and Blocking
+### 2. Structurally Realistic 20,000-Row Export — Provisionally Resolved
 
-Measure a real export from Moxfield, Archidekt, or ManaBox. Do not use the
-synthetic 20,000-row QA fixture, which is only 444,754 bytes and lacks the
-verbose columns found in genuine exports.
+`scripts/generate_test_collection.py` generated a 20,000-row CSV using the
+Moxfield export schema and card names from the processed reference data. The
+result was **1,456,947 bytes / 1.39 MiB / 72.8 bytes per row**, approximately
+3.0 times below the effective raw-upload ceiling. This is stronger evidence
+than the earlier compact QA fixture but remains synthetic; verify a genuine
+verbose Moxfield, Archidekt, or ManaBox export before manual deployment.
 
 The synchronous path is constrained by:
 
@@ -107,17 +115,24 @@ API Gateway event-envelope overhead         variable
 effective raw CSV ceiling                   approximately 4.4 MB
 ```
 
-If a genuine export exceeds the effective ceiling, choose between lowering
+Proceed into Phase 1 using the synchronous upload branch provisionally. If a
+later genuine export exceeds the effective ceiling, choose between lowering
 the product's row limit and implementing Phase 0b. This is a product decision.
 
-### 3. Maximum Response — Open
+### 3. Maximum Response — Provisionally Resolved
 
-Measure the largest successful JSON response using 20 recommendations with
-the maximum expected theme and supporting-card metadata. Measure before and
-after adding `GZipMiddleware`.
+A successful local request using the generated collection returned 20
+recommendations, 66 theme-support groups, and 330 supporting-card examples.
+The response measured **140,842 bytes uncompressed** and **12,248 bytes** when
+compressed directly with gzip. This is not the absolute maximum response
+shape and does not verify middleware behavior. Repeat the measurement after
+Phase 1 adds `GZipMiddleware`, using the largest available response fixture.
 
-**Checkpoint:** all three measurements are recorded, the complete artifact
-fits Lambda limits, and the upload branch is selected.
+**Checkpoint:** Phase 1 may begin with the synchronous upload branch. Before
+Phase 2, record the final Linux arm64 artifact sizes, verify response
+compression through the middleware, and test a genuine verbose export. If any
+measurement invalidates the provisional conclusions, revisit the upload
+branch before manual deployment.
 
 ## Phase 0b: Conditional Presigned S3 Upload
 
@@ -184,6 +199,7 @@ Create a minimal SAM template for local invocation. It contains only the API
 function and events and is superseded by CDK in Phase 5.
 
 ```powershell
+sam build --use-container
 sam local start-api
 ```
 

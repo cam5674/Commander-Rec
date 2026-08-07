@@ -1,0 +1,4 @@
+fastapi
+ijson>=3.4,<4
+mangum
+python-multipart

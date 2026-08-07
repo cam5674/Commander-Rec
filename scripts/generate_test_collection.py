@@ -76,7 +76,7 @@ def generate_row(card_names: list[str]) -> dict:
         "Collector Number": str(random.randint(1, 350)),
         "Alter": "",
         "Proxy": "",
-        "Purchase Price": f"{random.uniform(0.10, 45.00):.2f}"
+        "Purchase Price": f"{random.uniform(0.10, 85.00):.2f}"
                            if random.random() < 0.6 else "",
     }
 
