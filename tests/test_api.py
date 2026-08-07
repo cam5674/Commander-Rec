@@ -3,7 +3,15 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
-from backend.api import MAX_CSV_ROWS, MAX_UPLOAD_BYTES, app
+from backend.api import (
+    DEFAULT_FRONTEND_ORIGINS,
+    DEFAULT_MAX_UPLOAD_BYTES,
+    MAX_CSV_ROWS,
+    MAX_UPLOAD_BYTES,
+    app,
+    get_allowed_origins,
+    get_max_upload_bytes,
+)
 
 
 class APITests(unittest.TestCase):
@@ -22,6 +30,42 @@ class APITests(unittest.TestCase):
                 "accepted_file_extensions": [".csv"],
             },
         )
+
+    def test_default_upload_limit_is_four_mebibytes(self) -> None:
+        self.assertEqual(DEFAULT_MAX_UPLOAD_BYTES, 4 * 1024 * 1024)
+        self.assertEqual(MAX_UPLOAD_BYTES, DEFAULT_MAX_UPLOAD_BYTES)
+
+    def test_upload_limit_reads_environment(self) -> None:
+        with patch.dict("os.environ", {"MAX_UPLOAD_BYTES": "1234"}):
+            self.assertEqual(get_max_upload_bytes(), 1234)
+
+    def test_invalid_upload_limit_is_rejected(self) -> None:
+        with patch.dict("os.environ", {"MAX_UPLOAD_BYTES": "invalid"}):
+            with self.assertRaisesRegex(RuntimeError, "whole number"):
+                get_max_upload_bytes()
+
+    def test_allowed_origins_read_environment(self) -> None:
+        with patch.dict(
+            "os.environ",
+            {"ALLOWED_ORIGINS": "https://example.com, https://www.example.com"},
+        ):
+            self.assertEqual(
+                get_allowed_origins(),
+                ["https://example.com", "https://www.example.com"],
+            )
+
+    def test_allowed_origins_default_to_local_frontend(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertEqual(get_allowed_origins(), DEFAULT_FRONTEND_ORIGINS)
+
+    def test_large_responses_are_gzipped(self) -> None:
+        response = self.client.get(
+            "/openapi.json",
+            headers={"Accept-Encoding": "gzip"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.headers["content-encoding"], "gzip")
 
     def test_config_allows_frontend_cors_request(self) -> None:
         response = self.client.options(

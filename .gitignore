@@ -17,3 +17,6 @@ backend/backend_sandbox.py
 
 # qa
 /qa
+
+/tmp
+/.claude/

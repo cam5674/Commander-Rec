@@ -1,3 +1,4 @@
+import os
 from dataclasses import asdict
 from pathlib import Path
 from typing import NoReturn
@@ -5,9 +6,9 @@ from typing import NoReturn
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
-
 
 from backend.csv_parser import CSVRowLimitError, parse_collection_bytes
 from backend.data_loader import (
@@ -27,13 +28,47 @@ from backend.theme_scorer import (
     recommend_commanders,
 )
 
-LOCAL_FRONTEND_ORIGINS = [
+DEFAULT_FRONTEND_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+DEFAULT_MAX_UPLOAD_BYTES = 4 * 1024 * 1024
 
 
-MAX_UPLOAD_BYTES = 5 * 1024 * 1024
+def get_allowed_origins() -> list[str]:
+    configured_origins = os.getenv("ALLOWED_ORIGINS")
+    if configured_origins is None:
+        return DEFAULT_FRONTEND_ORIGINS.copy()
+
+    origins = [
+        origin.strip()
+        for origin in configured_origins.split(",")
+        if origin.strip()
+    ]
+    if not origins:
+        raise RuntimeError("ALLOWED_ORIGINS must contain at least one origin.")
+
+    return origins
+
+
+def get_max_upload_bytes() -> int:
+    configured_limit = os.getenv("MAX_UPLOAD_BYTES")
+    if configured_limit is None:
+        return DEFAULT_MAX_UPLOAD_BYTES
+
+    try:
+        limit = int(configured_limit)
+    except ValueError as error:
+        raise RuntimeError("MAX_UPLOAD_BYTES must be a whole number.") from error
+
+    if limit <= 0:
+        raise RuntimeError("MAX_UPLOAD_BYTES must be greater than zero.")
+
+    return limit
+
+
+ALLOWED_ORIGINS = get_allowed_origins()
+MAX_UPLOAD_BYTES = get_max_upload_bytes()
 MAX_CSV_ROWS = 20_000
 ACCEPTED_FILE_EXTENSIONS = [".csv"]
 
@@ -41,11 +76,12 @@ app = FastAPI(title="Commander Recommender")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=LOCAL_FRONTEND_ORIGINS,
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=False,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
+app.add_middleware(GZipMiddleware)
 
 
 def raise_api_error(

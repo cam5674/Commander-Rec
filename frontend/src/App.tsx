@@ -38,8 +38,12 @@ const SAMPLE_LOAD_ERROR_DETAIL: APIErrorDetail = {
   warnings: [],
 };
 
-async function loadSampleFile(): Promise<File> {
-  const response = await fetch(SAMPLE_CSV_PATH);
+function isAbortError(error: unknown): boolean {
+  return error instanceof DOMException && error.name === 'AbortError';
+}
+
+async function loadSampleFile(signal?: AbortSignal): Promise<File> {
+  const response = await fetch(SAMPLE_CSV_PATH, { signal });
   if (!response.ok) {
     throw new Error(`Failed to load sample CSV (${response.status})`);
   }
@@ -57,6 +61,7 @@ function App() {
   const [isSampleResult, setIsSampleResult] = useState(false);
   const resultsHeadingRef = useRef<HTMLHeadingElement>(null);
   const errorContainerRef = useRef<HTMLDivElement>(null);
+  const activeRequestRef = useRef<AbortController | null>(null);
 
   // Lifted out of UploadSection so it survives that component unmounting
   // during the loading state — otherwise a server error forced re-picking
@@ -66,10 +71,23 @@ function App() {
   useEffect(() => {
     // Progressive enhancement only — the server enforces the real limits, so a
     // failed config fetch just means the upload form skips client-side pre-checks.
-    fetchConfig()
+    const controller = new AbortController();
+
+    fetchConfig(controller.signal)
       .then(setConfig)
-      .catch(() => setConfig(null));
+      .catch((error: unknown) => {
+        if (!isAbortError(error)) {
+          setConfig(null);
+        }
+      });
+
+    return () => controller.abort();
   }, []);
+
+  useEffect(
+    () => () => activeRequestRef.current?.abort(),
+    [],
+  );
 
   useEffect(() => {
     if (viewState === 'results') {
@@ -82,24 +100,42 @@ function App() {
   // Shared by both the real upload and the sample trigger — same request,
   // same loading/error/results handling either way. The only thing that
   // differs between the two callers is how the File object was obtained.
-  const submitFile = async (file: File, isSample: boolean) => {
+  const beginRequest = () => {
+    activeRequestRef.current?.abort();
+    const controller = new AbortController();
+    activeRequestRef.current = controller;
+    return controller;
+  };
+
+  const submitFile = async (
+    file: File,
+    isSample: boolean,
+    controller: AbortController,
+  ) => {
     try {
-      const result = await submitCollection(file);
+      const result = await submitCollection(file, controller.signal);
       setResponseData(result);
       setThemeFilter(null);
       setVisibleCount(DEFAULT_VISIBLE_COUNT);
       setIsSampleResult(isSample);
       setViewState('results');
     } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
       setErrorInfo(error instanceof APIError ? error.detail : NETWORK_ERROR_DETAIL);
       setViewState('error');
+    } finally {
+      if (activeRequestRef.current === controller) {
+        activeRequestRef.current = null;
+      }
     }
   };
 
   const handleSubmit = async (file: File) => {
     setViewState('loading');
     setErrorInfo(null);
-    await submitFile(file, false);
+    await submitFile(file, false, beginRequest());
   };
 
   const handleTrySample = async () => {
@@ -109,19 +145,29 @@ function App() {
     // than a dedicated isSubmitting flag.
     setViewState('loading');
     setErrorInfo(null);
+    const controller = beginRequest();
 
     try {
-      const sampleFile = await loadSampleFile();
-      await submitFile(sampleFile, true);
-    } catch {
+      const sampleFile = await loadSampleFile(controller.signal);
+      await submitFile(sampleFile, true, controller);
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
       // Only reached if fetching the bundled asset itself failed —
       // submitFile handles its own submission errors internally.
       setErrorInfo(SAMPLE_LOAD_ERROR_DETAIL);
       setViewState('error');
+    } finally {
+      if (activeRequestRef.current === controller) {
+        activeRequestRef.current = null;
+      }
     }
   };
 
   const handleReset = () => {
+    activeRequestRef.current?.abort();
+    activeRequestRef.current = null;
     setViewState('idle');
     setResponseData(null);
     setErrorInfo(null);

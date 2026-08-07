@@ -37,7 +37,6 @@ The MVP should not require user accounts or permanent storage of user collection
 - AWS Lambda
 - API Gateway
 - S3
-- DynamoDB
 - Scryfall bulk data
 - GitHub
 
@@ -59,7 +58,11 @@ npm run dev
 ```
 
 Open the frontend at `http://localhost:5173`. Keep both processes running so
-CSV uploads can reach the API at `http://127.0.0.1:8000`.
+Vite can proxy relative `/api` requests to `http://127.0.0.1:8000`.
+
+Deployment configuration is environment-driven. The backend accepts
+`REFERENCE_DATA_DIR`, `ALLOWED_ORIGINS`, and `MAX_UPLOAD_BYTES`; the frontend
+uses `VITE_API_BASE_URL`, defaulting to `/api`.
 
 FastAPI also provides:
 
@@ -78,7 +81,7 @@ field:
 
 ```powershell
 curl.exe -X POST `
-  -F "upload=@data/test_collection.csv;type=text/csv" `
+  -F "upload=@data/raw/test_collection.csv;type=text/csv" `
   http://127.0.0.1:8000/recommendations
 ```
 
@@ -93,7 +96,7 @@ A successful response includes:
 Common error responses:
 
 - `400 Bad Request`: invalid CSV, too many data rows, or no recognized cards
-- `413 Payload Too Large`: the upload exceeds 5 MB
+- `413 Payload Too Large`: the upload exceeds 4 MiB
 - `422 Unprocessable Entity`: the required `upload` field is missing
 
 All error responses use one structure:

@@ -1,6 +1,7 @@
 import type { APIErrorDetail, AppConfig, RecommendationResponse } from '../types/api';
 
-const API_BASE_URL = 'http://127.0.0.1:8000';
+const configuredBaseUrl = import.meta.env.VITE_API_BASE_URL?.trim();
+const API_BASE_URL = (configuredBaseUrl || '/api').replace(/\/$/, '');
 
 export class APIError extends Error {
   readonly status: number;
@@ -31,8 +32,8 @@ async function readErrorDetail(response: Response): Promise<APIErrorDetail> {
   };
 }
 
-export async function fetchConfig(): Promise<AppConfig> {
-  const response = await fetch(`${API_BASE_URL}/config`);
+export async function fetchConfig(signal?: AbortSignal): Promise<AppConfig> {
+  const response = await fetch(`${API_BASE_URL}/config`, { signal });
 
   if (!response.ok) {
     throw new APIError(response.status, await readErrorDetail(response));
@@ -41,13 +42,17 @@ export async function fetchConfig(): Promise<AppConfig> {
   return response.json();
 }
 
-export async function submitCollection(file: File): Promise<RecommendationResponse> {
+export async function submitCollection(
+  file: File,
+  signal?: AbortSignal,
+): Promise<RecommendationResponse> {
   const formData = new FormData();
   formData.append('upload', file);
 
   const response = await fetch(`${API_BASE_URL}/recommendations`, {
     method: 'POST',
     body: formData,
+    signal,
   });
 
   if (!response.ok) {

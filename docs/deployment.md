@@ -1,7 +1,8 @@
 # Deployment
 
 This document is the authoritative deployment sequence for the MTG Commander
-Recommender MVP. The deployment is planned and has not been implemented.
+Recommender MVP. Phase 1 is in progress and locally verified; no AWS stack has
+been deployed.
 
 Read this file first. Open the supporting document linked by a phase only when
 working on that topic:
@@ -164,7 +165,7 @@ When this branch is selected:
 
 This API-contract change requires its own review before implementation.
 
-## Phase 1: Deployment Application Changes
+## Phase 1: Deployment Application Changes — In Progress
 
 ### Backend
 
@@ -206,6 +207,37 @@ sam local start-api
 On the synchronous branch, verify a real multipart upload through SAM. On the
 S3 branch, verify presigning, key validation, size rejection, and guaranteed
 deletion with an S3 test double.
+
+### Verified Local SAM Results — August 7, 2026
+
+- SAM ran the Python 3.12 arm64 Lambda image through Docker on an x86_64
+  Windows host.
+- A multipart request to `/recommendations` returned HTTP 200 with 20
+  recommendations.
+- The first invocation in the already-started container took **9,352.11 ms**
+  with **3.46 ms** of runtime initialization. This is a first-request,
+  lazy-reference-data measurement, not a clean infrastructure cold start.
+- A subsequent invocation in the same container took **691.65 ms**, about
+  **13.5 times faster**, after the cached reference data was available.
+- Both measurements used the arm64 image under x86_64 emulation. Real Lambda
+  latency and memory use still require Phase 2 CloudWatch measurements.
+- Local SAM used a 60-second `FunctionTimeout` override for test headroom. The
+  template default remains 10 seconds; the successful 9.35-second request does
+  not establish that a 60-second deployed timeout is necessary.
+
+### Current Phase 1 Status
+
+Implemented: the Mangum handler, focused Lambda build, Python 3.12 arm64
+runtime, environment-driven backend settings, 4 MiB upload limit,
+`GZipMiddleware`, cache-aware reference-load timing, relative `/api` frontend
+configuration, Vite development proxy, and abortable requests without
+automatic retries. README and agent guidance are aligned with these changes.
+
+Validation: all 107 backend tests and 6 frontend tests pass; frontend lint and
+the production build also pass. Phase 1 remains in progress until the SAM
+artifact is rebuilt and the multipart smoke test is repeated against this
+updated build. The earlier successful local measurement predates these final
+application changes.
 
 **Checkpoint:** the selected upload branch passes local API and regression
 tests through a Lambda-compatible handler.

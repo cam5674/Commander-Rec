@@ -1,6 +1,11 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
 
+Parameters:
+  FunctionTimeout:
+    Type: Number
+    Default: 10
+
 Resources:
   ApiFunction:
     Type: AWS::Serverless::Function
@@ -14,7 +19,7 @@ Resources:
       Architectures:
         - arm64
       MemorySize: 1024
-      Timeout: 10
+      Timeout: !Ref FunctionTimeout
       Environment:
         Variables:
           REFERENCE_DATA_DIR: data/processed
