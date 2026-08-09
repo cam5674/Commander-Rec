@@ -1,8 +1,7 @@
 # Deployment
 
 This document is the authoritative deployment sequence for the MTG Commander
-Recommender MVP. Phase 1 is in progress and locally verified; no AWS stack has
-been deployed.
+Recommender MVP. Phase 1 is complete; no AWS stack has been deployed.
 
 Read this file first. Open the supporting document linked by a phase only when
 working on that topic:
@@ -165,7 +164,7 @@ When this branch is selected:
 
 This API-contract change requires its own review before implementation.
 
-## Phase 1: Deployment Application Changes — In Progress
+## Phase 1: Deployment Application Changes — Complete
 
 ### Backend
 
@@ -210,20 +209,15 @@ deletion with an S3 test double.
 
 ### Verified Local SAM Results — August 7, 2026
 
-- SAM ran the Python 3.12 arm64 Lambda image through Docker on an x86_64
-  Windows host.
-- A multipart request to `/recommendations` returned HTTP 200 with 20
-  recommendations.
-- The first invocation in the already-started container took **9,352.11 ms**
-  with **3.46 ms** of runtime initialization. This is a first-request,
-  lazy-reference-data measurement, not a clean infrastructure cold start.
-- A subsequent invocation in the same container took **691.65 ms**, about
-  **13.5 times faster**, after the cached reference data was available.
-- Both measurements used the arm64 image under x86_64 emulation. Real Lambda
-  latency and memory use still require Phase 2 CloudWatch measurements.
-- Local SAM used a 60-second `FunctionTimeout` override for test headroom. The
-  template default remains 10 seconds; the successful 9.35-second request does
-  not establish that a 60-second deployed timeout is necessary.
+- The Python 3.12 arm64 image ran through Docker on an x86_64 Windows host.
+- `/recommendations` returned HTTP 200 with 20 results; `/config` returned the
+  4 MiB limit; gzip reduced the response from about 143 KB to 11,157 bytes.
+- The first handler invocation took **9,944.72 ms**. Reference-data misses
+  accounted for **2,231.14 ms**; runtime initialization was **2.57 ms**.
+- The cached invocation took **700.30 ms**, about **14.2 times faster**;
+  reference-data cache hits each took 0.01–0.02 ms.
+- Local client totals were 11.03 seconds and 1.75 seconds. Real Lambda latency,
+  memory use, and the 10-second default timeout still require Phase 2 review.
 
 ### Current Phase 1 Status
 
@@ -233,14 +227,12 @@ runtime, environment-driven backend settings, 4 MiB upload limit,
 configuration, Vite development proxy, and abortable requests without
 automatic retries. README and agent guidance are aligned with these changes.
 
-Validation: all 107 backend tests and 6 frontend tests pass; frontend lint and
-the production build also pass. Phase 1 remains in progress until the SAM
-artifact is rebuilt and the multipart smoke test is repeated against this
-updated build. The earlier successful local measurement predates these final
-application changes.
+Validation: all 107 backend tests and 6 frontend tests pass; frontend lint,
+production build, rebuilt SAM artifact, multipart upload, gzip, configuration,
+and cache instrumentation are verified.
 
-**Checkpoint:** the selected upload branch passes local API and regression
-tests through a Lambda-compatible handler.
+**Checkpoint: Complete.** The synchronous upload branch passes local API and
+regression tests through a Lambda-compatible handler.
 
 ## Phase 2: Manual Backend Deployment
 
