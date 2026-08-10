@@ -1,7 +1,8 @@
 # Deployment
 
 This document is the authoritative deployment sequence for the MTG Commander
-Recommender MVP. Phase 1 is complete; no AWS stack has been deployed.
+Recommender MVP. Phases 1 through 4 are complete; the backend, private frontend,
+and single-origin CloudFront routing are deployed manually in `us-west-1`.
 
 Read this file first. Open the supporting document linked by a phase only when
 working on that topic:
@@ -42,17 +43,10 @@ traffic and therefore requires scratch-bucket CORS. See Phase 0b and the
 ### `/api` Prefix
 
 CloudFront forwards `/api/config` and `/api/recommendations`, while FastAPI
-currently exposes `/config` and `/recommendations`. The prefix must be removed
-before routing reaches FastAPI.
-
-Options, in preference order:
-
-1. CloudFront Function on the `/api/*` viewer-request behavior
-2. Mangum `api_gateway_base_path`
-3. environment-driven FastAPI router prefix
-
-CloudFront Function is recommended, but the choice remains open until Phase
-4. Do not deploy the API behavior without an explicit prefix test.
+exposes `/config` and `/recommendations`. The published viewer-request function
+`commander-rec-strip-api-prefix` removes `/api` on the `/api/*` behavior before
+the request reaches API Gateway. Explicit function tests and live requests
+confirmed `/api/config` becomes `/config` without changing the selected origin.
 
 ## Decisions
 
@@ -67,7 +61,7 @@ CloudFront Function is recommended, but the choice remains open until Phase
 | Initialization | Keep lazy loading for the initial MVP |
 | Frontend | Private S3 bucket behind CloudFront OAC |
 | API path | `/api/*` through the same CloudFront distribution |
-| Concurrency | Reserved concurrency 5 |
+| Concurrency | API throttle 10 requests/second, burst 20; reserved concurrency deferred |
 | Timeout | 10 seconds initially |
 | DynamoDB | Not used in the MVP |
 | WAF and custom domain | Deferred |
@@ -270,21 +264,31 @@ root, assets, favicon, and sample CSV, while direct S3 access returned HTTP
 
 ## Phase 4: Single-Origin API Wiring
 
-Add API Gateway as the `/api/*` CloudFront origin.
+**Status: Complete.** API Gateway is configured as the `/api/*` CloudFront
+origin, with the following behavior:
 
 | Setting | Value |
 | --- | --- |
 | Allowed methods | GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE |
 | Cache policy | `CachingDisabled` |
 | Origin request policy | `AllViewerExceptHostHeader` |
-| Prefix handling | Explicitly selected and tested `/api` stripping mechanism |
+| Prefix handling | `commander-rec-strip-api-prefix` viewer-request function |
 
-Point the frontend at `/api`. Keep backend origin configuration for local
-development, but production API traffic should remain same-origin.
+The production frontend uses relative `/api` requests while local development
+retains its Vite proxy and localhost backend origins. The CloudFront behavior
+returned HTTP 200 for `/api/config` and both test collections, with 20
+recommendations for each. Gzip was verified after attaching
+`AllViewerExceptHostHeader`; a representative response was reduced to 11,240
+bytes. Structured 400, 413, and 422 responses passed through CloudFront with
+the expected API error shape.
 
-**Checkpoint:** the browser completes the full selected upload flow through
-CloudFront, including structured 400, 413, and 422 responses. If Phase 0b is
-active, also verify scratch-bucket CORS and cleanup.
+The browser completed the same-origin POST flow without CORS errors or direct
+`execute-api` requests. The realistic collection completed in about four
+seconds without browser network throttling, consistent with command-line
+measurements.
+
+**Checkpoint: Complete.** The synchronous browser upload flow works through
+the single CloudFront origin.
 
 ## Phase 5: Infrastructure as Code
 
@@ -354,16 +358,16 @@ artifact without downloading changing Scryfall data during the build.
 
 Apply these changes as their corresponding phases land:
 
-| Document | Update | Phase |
-| --- | --- | --- |
-| `README.md` upload limit | Replace 5 MiB if a different final limit is selected | 1 |
-| `README.md` curl example | Change `data/test_collection.csv` to `data/raw/test_collection.csv` | 1 |
-| `README.md` API contract | Document presign and object-key flow if Phase 0b is selected | 0b |
-| `README.md` tech stack | Remove DynamoDB from active MVP stack | 1 |
-| `README.md` topology | Add CloudFront and link to this document | 4 |
-| `docs/architecture.md` | Point target deployment references to this document | 4 |
-| `docs/architecture.md` request pipeline | Document temporary S3 handling if Phase 0b is selected | 0b |
-| `agent.md` | Add cancellation and no-retry deployment rules | 1 |
+| Document | Update | Phase | Status |
+| --- | --- | --- | --- |
+| `README.md` upload limit | Document the enforced 4 MiB limit | 1 | Complete |
+| `README.md` curl example | Use `data/raw/test_collection.csv` | 1 | Complete |
+| `README.md` API contract | Document presign and object-key flow | 0b | Not applicable |
+| `README.md` tech stack | Remove DynamoDB from the active MVP | 1 | Complete |
+| `README.md` topology | Add CloudFront and link to this document | 4 | Complete |
+| `docs/architecture.md` | Point deployment references to this document | 4 | Complete |
+| `docs/architecture.md` request pipeline | Document temporary S3 handling | 0b | Not applicable |
+| `agent.md` | Add cancellation and no-retry deployment rules | 1 | Complete |
 
 ## Open Questions
 
@@ -373,9 +377,6 @@ Apply these changes as their corresponding phases land:
 3. What are the complete compressed and uncompressed Lambda artifact sizes?
 4. If synchronous uploads cannot support 20,000 rows, should the product lower
    the row limit or adopt Phase 0b?
-5. What is the final upload-size limit?
-6. Which AWS Region will host the stack?
-7. Which `/api` prefix mechanism will be used?
-8. Which AWS account plan is active?
-9. If SnapStart is reconsidered, does the selected Python runtime support it
+5. Which AWS account plan is active?
+6. If SnapStart is reconsidered, does the selected Python runtime support it
    on arm64 in the chosen Region?

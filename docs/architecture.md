@@ -27,13 +27,14 @@ flowchart LR
     M --> F
 ```
 
-This diagram describes the implemented application flow independently of its
-hosting environment. The repository currently runs FastAPI/Uvicorn and Vite
-locally, reads reference JSON from `data/processed`, and uses localhost API and
-CORS settings. The S3, API Gateway, Lambda, and Mangum topology in the README is
-the target deployment architecture; its adapter, infrastructure configuration,
-production origins, and S3-backed reference-data loading are not implemented
-in this repository yet.
+This diagram describes the application flow independently of its hosting
+environment. Local development uses FastAPI/Uvicorn, Vite, and localhost CORS
+settings. The deployed MVP uses CloudFront as a single public origin: its
+default behavior serves the private S3 frontend, while `/api/*` routes through
+API Gateway to the FastAPI application on Lambda via Mangum. Processed
+reference JSON is packaged with Lambda and cached in memory; user collections
+remain request-scoped. See [`docs/deployment.md`](deployment.md) for the AWS
+topology, configuration, and deployment history.
 
 ## Reference-Data Pipeline
 

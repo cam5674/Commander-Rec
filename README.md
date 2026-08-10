@@ -37,6 +37,7 @@ The MVP should not require user accounts or permanent storage of user collection
 - AWS Lambda
 - API Gateway
 - S3
+- CloudFront
 - Scryfall bulk data
 - GitHub
 
@@ -119,7 +120,7 @@ matching validation:
 
 ```json
 {
-  "max_upload_bytes": 5242880,
+  "max_upload_bytes": 4194304,
   "max_csv_rows": 20000,
   "accepted_file_extensions": [".csv"]
 }
@@ -133,23 +134,28 @@ API documentation.
 
 ## Architecture
 
-Initial MVP architecture:
+Deployed MVP architecture:
 
 ```text
-Static frontend on S3
-        |
-        v
-API Gateway
-        |
-        v
-AWS Lambda running FastAPI via Mangum
-        |
-        v
-Recommendation engine
-        |
-        v
-JSON response with commander recommendations
+Browser
+   |
+   v
+CloudFront
+   |-- default behavior --> private S3 frontend
+   |
+   `-- /api/* behavior --> API Gateway
+                              |
+                              v
+                         AWS Lambda
+                         FastAPI + Mangum
+                              |
+                              v
+                    Recommendation engine
 ```
+
+CloudFront provides one public origin for the application. The frontend uses
+relative `/api` requests, and a viewer-request CloudFront Function removes that
+prefix before forwarding requests to the existing FastAPI routes.
 
 The Lambda function should use cached reference data, not cached user data.
 
@@ -164,7 +170,8 @@ User-uploaded collections should be treated as temporary request data for the MV
 
 For the implemented data-processing and recommendation flows, module
 responsibilities, and API boundary, see
-[Architecture](docs/architecture.md).
+[Architecture](docs/architecture.md). Deployment details and phase history are
+recorded in [Deployment](docs/deployment.md).
 
 ## Data Pipeline
 
