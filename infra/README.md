@@ -7,7 +7,9 @@ This AWS CDK app defines the Phase 5 parallel deployment stack:
 - private S3 frontend bucket with CloudFront OAC
 - CloudFront frontend and `/api/*` behaviors
 - frontend asset deployment and cache headers
-- explicit 14-day CloudWatch log retention
+- API access logs and explicit 14-day CloudWatch log retention
+- CloudWatch alarms with an SNS email subscription
+- CloudFront managed security response headers
 
 The stack is named `commander-rec-cdk`, so it does not modify the existing
 manual SAM/CloudFormation deployment.
@@ -47,8 +49,12 @@ cdk diff --profile commander-rec
 Review the diff before creating the parallel stack:
 
 ```powershell
-cdk deploy --profile commander-rec
+$AlertEmail = "you@example.com"
+cdk deploy --profile commander-rec --parameters AlertEmail=$AlertEmail
 ```
+
+After deployment, confirm the AWS SNS subscription email before expecting
+alarm notifications.
 
 Do not remove the existing manual stack until the CDK deployment passes the
 Phase 5 browser, API, caching, and rollback checks in `docs/deployment.md`.

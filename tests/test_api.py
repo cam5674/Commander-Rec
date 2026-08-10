@@ -4,12 +4,14 @@ from unittest.mock import patch
 from fastapi.testclient import TestClient
 
 from backend.api import (
+    DEFAULT_API_DOCS_ENABLED,
     DEFAULT_FRONTEND_ORIGINS,
     DEFAULT_MAX_UPLOAD_BYTES,
     MAX_CSV_ROWS,
     MAX_UPLOAD_BYTES,
     app,
     get_allowed_origins,
+    get_api_docs_enabled,
     get_max_upload_bytes,
 )
 
@@ -43,6 +45,33 @@ class APITests(unittest.TestCase):
         with patch.dict("os.environ", {"MAX_UPLOAD_BYTES": "invalid"}):
             with self.assertRaisesRegex(RuntimeError, "whole number"):
                 get_max_upload_bytes()
+
+    def test_api_docs_default_to_enabled(self) -> None:
+        with patch.dict("os.environ", {}, clear=True):
+            self.assertTrue(DEFAULT_API_DOCS_ENABLED)
+            self.assertTrue(get_api_docs_enabled())
+
+    def test_api_docs_parse_boolean_environment_values(self) -> None:
+        for configured_value in ("1", "true", "YES", " on "):
+            with self.subTest(configured_value=configured_value):
+                with patch.dict(
+                    "os.environ",
+                    {"ENABLE_API_DOCS": configured_value},
+                ):
+                    self.assertTrue(get_api_docs_enabled())
+
+        for configured_value in ("0", "false", "NO", " off "):
+            with self.subTest(configured_value=configured_value):
+                with patch.dict(
+                    "os.environ",
+                    {"ENABLE_API_DOCS": configured_value},
+                ):
+                    self.assertFalse(get_api_docs_enabled())
+
+    def test_invalid_api_docs_value_is_rejected(self) -> None:
+        with patch.dict("os.environ", {"ENABLE_API_DOCS": "sometimes"}):
+            with self.assertRaisesRegex(RuntimeError, "boolean value"):
+                get_api_docs_enabled()
 
     def test_allowed_origins_read_environment(self) -> None:
         with patch.dict(

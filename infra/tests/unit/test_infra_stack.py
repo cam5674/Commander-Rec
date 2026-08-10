@@ -35,6 +35,7 @@ def test_lambda_configuration_and_logs() -> None:
                         "http://localhost:5173,http://127.0.0.1:5173"
                     ),
                     "MAX_UPLOAD_BYTES": "4194304",
+                    "ENABLE_API_DOCS": "false",
                 }
             },
         },
@@ -65,11 +66,30 @@ def test_http_api_routes_and_throttling() -> None:
             "StageName": "$default",
             "AutoDeploy": True,
             "DefaultRouteSettings": {
+                "DetailedMetricsEnabled": False,
                 "ThrottlingBurstLimit": 20,
                 "ThrottlingRateLimit": 10,
             },
+            "AccessLogSettings": {
+                "DestinationArn": assertions.Match.any_value(),
+                "Format": assertions.Match.any_value(),
+            },
         },
     )
+    template.has_resource_properties(
+        "AWS::Logs::LogGroup",
+        {
+            "LogGroupName": "/aws/apigateway/commander-rec-cdk-api",
+            "RetentionInDays": 14,
+        },
+    )
+
+    stages = template.find_resources("AWS::ApiGatewayV2::Stage")
+    access_log_format = next(iter(stages.values()))["Properties"][
+        "AccessLogSettings"
+    ]["Format"]
+    for forbidden_field in ("body", "filename", "header", "query"):
+        assert forbidden_field not in access_log_format.casefold()
 
 
 def test_private_frontend_bucket_and_origin_access_control() -> None:
@@ -137,6 +157,9 @@ def test_cloudfront_routes_frontend_and_api() -> None:
                         {
                             "AllowedMethods": ["GET", "HEAD"],
                             "Compress": True,
+                            "ResponseHeadersPolicyId": (
+                                "67f7725c-6f97-4210-82d7-5512b31e9d03"
+                            ),
                             "ViewerProtocolPolicy": "redirect-to-https",
                         }
                     ),
@@ -200,5 +223,100 @@ def test_frontend_cache_controls_and_outputs() -> None:
         "FrontendBucketName",
         "ApiUrl",
         "LambdaFunctionName",
+        "AlertTopicArn",
     ):
         template.has_output(output_name, {})
+
+
+def test_alert_topic_and_email_subscription() -> None:
+    template = synthesize_template()
+
+    template.has_parameter(
+        "AlertEmail",
+        {
+            "Type": "String",
+            "Description": "Email address for Commander Rec operational alerts",
+            "NoEcho": True,
+        },
+    )
+    template.has_resource_properties(
+        "AWS::SNS::Topic",
+        {
+            "TopicName": "commander-rec-cdk-alerts",
+            "DisplayName": "Commander Rec operational alerts",
+        },
+    )
+    template.has_resource_properties(
+        "AWS::SNS::Subscription",
+        {
+            "Protocol": "email",
+            "Endpoint": {"Ref": "AlertEmail"},
+        },
+    )
+
+
+def test_operational_alarms_notify_without_automated_remediation() -> None:
+    template = synthesize_template()
+    alarms = template.find_resources("AWS::CloudWatch::Alarm")
+
+    assert len(alarms) == 7
+    alarm_properties = [alarm["Properties"] for alarm in alarms.values()]
+    assert {
+        alarm["AlarmName"]
+        for alarm in alarm_properties
+    } == {
+        "commander-rec-cdk-lambda-invocation-spike",
+        "commander-rec-cdk-lambda-throttles",
+        "commander-rec-cdk-lambda-errors",
+        "commander-rec-cdk-lambda-duration-p95",
+        "commander-rec-cdk-api-request-volume",
+        "commander-rec-cdk-api-client-errors",
+        "commander-rec-cdk-api-server-errors",
+    }
+    assert all(len(alarm["AlarmActions"]) == 1 for alarm in alarm_properties)
+    assert all(
+        alarm["TreatMissingData"] == "notBreaching"
+        for alarm in alarm_properties
+    )
+
+    invocation_alarm = next(
+        alarm
+        for alarm in alarm_properties
+        if alarm["AlarmName"]
+        == "commander-rec-cdk-lambda-invocation-spike"
+    )
+    assert invocation_alarm["MetricName"] == "Invocations"
+    assert invocation_alarm["Threshold"] == 300
+    assert invocation_alarm["EvaluationPeriods"] == 2
+    assert invocation_alarm["DatapointsToAlarm"] == 2
+    assert invocation_alarm["ComparisonOperator"] == "GreaterThanThreshold"
+
+    duration_alarm = next(
+        alarm
+        for alarm in alarm_properties
+        if alarm["AlarmName"] == "commander-rec-cdk-lambda-duration-p95"
+    )
+    assert duration_alarm["ExtendedStatistic"] == "p95"
+    assert duration_alarm["Threshold"] == 8000
+    assert duration_alarm["EvaluateLowSampleCountPercentile"] == "ignore"
+
+    request_volume_alarm = next(
+        alarm
+        for alarm in alarm_properties
+        if alarm["AlarmName"] == "commander-rec-cdk-api-request-volume"
+    )
+    assert request_volume_alarm["Namespace"] == "AWS/ApiGateway"
+    assert request_volume_alarm["MetricName"] == "Count"
+    assert request_volume_alarm["Threshold"] == 600
+    assert request_volume_alarm["EvaluationPeriods"] == 2
+    assert request_volume_alarm["DatapointsToAlarm"] == 2
+
+    functions = template.find_resources("AWS::Lambda::Function")
+    api_function = next(
+        function["Properties"]
+        for function in functions.values()
+        if function["Properties"].get("FunctionName")
+        == "commander-rec-cdk-api"
+    )
+    assert "ReservedConcurrentExecutions" not in api_function
+    assert "remediation" not in str(template.to_json()).casefold()

@@ -327,16 +327,40 @@ SAM can invoke the synthesized Lambda definition locally.
 Implement the controls in
 [Security and Cost Controls](deployment/security-and-costs.md):
 
-- reserved concurrency and timeout
-- API route throttling
-- Lambda and API Gateway alarms
-- SNS notifications
-- automated and manual concurrency-zero kill switches
-- AWS Budget and Cost Anomaly Detection
-- 14-day log retention
+1. Keep the account concurrency quota at 10, the Lambda timeout at 10 seconds,
+   and the API throttle at 10 requests/second with burst 20.
+2. Create one SNS alert topic with a confirmed email subscription.
+3. Add the seven Lambda and API Gateway alarms with conservative initial
+   thresholds and non-breaching missing-data behavior.
+4. Enable structured API Gateway access logs with 14-day retention, attach
+   CloudFront's managed security headers, and disable production API docs.
+5. Verify the existing `$1` and `$10` budgets, actual and forecast alerts, and
+   AWS Cost Anomaly Detection notifications.
+6. Deploy through CDK, test the SNS and alarm paths, and verify normal browser
+   and CSV-upload behavior.
+7. Test reserved concurrency zero during a planned window, restore service by
+   deleting the concurrency configuration, and rerun the API checks.
 
-**Checkpoint:** notifications reach the owner, the remediation Lambda can
-disable the API function, and the manual kill switch has been tested.
+Positive reserved concurrency and an automated remediation Lambda are deferred
+for the low-traffic showcase deployment. The existing account concurrency
+quota of 10 remains the regional blast-radius cap; increasing it solely to
+reserve function capacity would add complexity without a current traffic need.
+
+The controls were deployed through CDK. The SNS subscription was confirmed,
+and both a direct publish and a temporary CloudWatch alarm-state test delivered
+email notifications. All seven alarms target the topic. API Gateway access
+logs contain operational metadata without upload contents and retain events for
+14 days. CloudFront returns the managed security headers, while `/api/docs` and
+`/api/openapi.json` return HTTP 404. The `$1` and `$10` budget notifications and
+Cost Anomaly Detection are configured.
+
+The manual kill-switch test returned HTTP 503 with reserved concurrency set to
+zero. Deleting that configuration restored `/api/config` to HTTP 200 and
+returned the function to the account's unreserved concurrency pool.
+
+**Checkpoint: Complete.** Alerts reach the owner, logging and browser hardening
+are verified, billing notifications are active, and the emergency kill switch
+has been tested and safely restored.
 
 ## Phase 7: Cold-Start Tuning
 

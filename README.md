@@ -62,8 +62,10 @@ Open the frontend at `http://localhost:5173`. Keep both processes running so
 Vite can proxy relative `/api` requests to `http://127.0.0.1:8000`.
 
 Deployment configuration is environment-driven. The backend accepts
-`REFERENCE_DATA_DIR`, `ALLOWED_ORIGINS`, and `MAX_UPLOAD_BYTES`; the frontend
-uses `VITE_API_BASE_URL`, defaulting to `/api`.
+`REFERENCE_DATA_DIR`, `ALLOWED_ORIGINS`, `MAX_UPLOAD_BYTES`, and
+`ENABLE_API_DOCS`; API documentation defaults to enabled locally and is
+disabled in the deployed Lambda. The frontend uses `VITE_API_BASE_URL`,
+defaulting to `/api`.
 
 FastAPI also provides:
 

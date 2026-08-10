@@ -33,6 +33,7 @@ DEFAULT_FRONTEND_ORIGINS = [
     "http://127.0.0.1:5173",
 ]
 DEFAULT_MAX_UPLOAD_BYTES = 4 * 1024 * 1024
+DEFAULT_API_DOCS_ENABLED = True
 
 
 def get_allowed_origins() -> list[str]:
@@ -67,12 +68,34 @@ def get_max_upload_bytes() -> int:
     return limit
 
 
+def get_api_docs_enabled() -> bool:
+    configured_value = os.getenv("ENABLE_API_DOCS")
+    if configured_value is None:
+        return DEFAULT_API_DOCS_ENABLED
+
+    normalized_value = configured_value.strip().casefold()
+    if normalized_value in {"1", "true", "yes", "on"}:
+        return True
+    if normalized_value in {"0", "false", "no", "off"}:
+        return False
+
+    raise RuntimeError(
+        "ENABLE_API_DOCS must be a boolean value such as true or false."
+    )
+
+
 ALLOWED_ORIGINS = get_allowed_origins()
 MAX_UPLOAD_BYTES = get_max_upload_bytes()
+API_DOCS_ENABLED = get_api_docs_enabled()
 MAX_CSV_ROWS = 20_000
 ACCEPTED_FILE_EXTENSIONS = [".csv"]
 
-app = FastAPI(title="Commander Recommender")
+app = FastAPI(
+    title="Commander Recommender",
+    docs_url="/docs" if API_DOCS_ENABLED else None,
+    redoc_url="/redoc" if API_DOCS_ENABLED else None,
+    openapi_url="/openapi.json" if API_DOCS_ENABLED else None,
+)
 
 app.add_middleware(
     CORSMiddleware,
