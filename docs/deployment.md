@@ -1,8 +1,9 @@
 # Deployment
 
 This document is the authoritative deployment sequence for the MTG Commander
-Recommender MVP. Phases 1 through 4 are complete; the backend, private frontend,
-and single-origin CloudFront routing are deployed manually in `us-west-1`.
+Recommender MVP. Phases 1 through 5 are complete; the backend, private frontend,
+and single-origin CloudFront routing are deployed through the Python CDK stack
+`commander-rec-cdk` in `us-west-1`.
 
 Read this file first. Open the supporting document linked by a phase only when
 working on that topic:
@@ -44,9 +45,10 @@ traffic and therefore requires scratch-bucket CORS. See Phase 0b and the
 
 CloudFront forwards `/api/config` and `/api/recommendations`, while FastAPI
 exposes `/config` and `/recommendations`. The published viewer-request function
-`commander-rec-strip-api-prefix` removes `/api` on the `/api/*` behavior before
-the request reaches API Gateway. Explicit function tests and live requests
-confirmed `/api/config` becomes `/config` without changing the selected origin.
+`commander-rec-cdk-strip-api-prefix` removes `/api` on the `/api/*` behavior
+before the request reaches API Gateway. Explicit function tests and live
+requests confirmed `/api/config` becomes `/config` without changing the
+selected origin.
 
 ## Decisions
 
@@ -272,7 +274,7 @@ origin, with the following behavior:
 | Allowed methods | GET, HEAD, OPTIONS, PUT, POST, PATCH, DELETE |
 | Cache policy | `CachingDisabled` |
 | Origin request policy | `AllViewerExceptHostHeader` |
-| Prefix handling | `commander-rec-strip-api-prefix` viewer-request function |
+| Prefix handling | `commander-rec-cdk-strip-api-prefix` viewer-request function |
 
 The production frontend uses relative `/api` requests while local development
 retains its Vite proxy and localhost backend origins. The CloudFront behavior
@@ -292,8 +294,10 @@ the single CloudFront origin.
 
 ## Phase 5: Infrastructure as Code
 
-Replace manually created resources with AWS CDK in Python. Define Lambda, API
-Gateway, S3, CloudFront, OAC, throttling, log retention, and IAM explicitly.
+**Status: Complete.** The Python CDK app in `infra` defines Lambda, API Gateway,
+S3, CloudFront, OAC, throttling, 14-day log retention, IAM, frontend deployment,
+and cache policies. The separate `commander-rec-cdk` stack was synthesized,
+tested, reviewed with `cdk diff`, and deployed successfully.
 
 CDK stages large zip assets through its bootstrap bucket, bypassing the 50 MB
 direct-upload limit but not Lambda's 250 MB uncompressed limit.
@@ -302,8 +306,21 @@ A reference-data Lambda layer remains optional and should be introduced only
 if its separate release cadence is worth the added version management. Layers
 do not increase the combined uncompressed package limit.
 
-**Checkpoint:** `cdk deploy` recreates the verified manual stack, and SAM can
-invoke the synthesized Lambda definition locally.
+Both test collections returned HTTP 200 with 20 recommendations through the
+CDK-managed CloudFront distribution. The standard collection completed in
+1.74 seconds and the realistic collection in 4.81 seconds. Gzip reduced the
+representative response to 11,240 bytes. Browser same-origin routing, the
+10-request/second and burst-20 API throttle, frontend cache headers, and private
+S3 access were verified. Warm Lambda work completed in 314.95 ms with 253 MB
+peak memory; a lightweight request completed in 2.92 ms.
+
+SAM invoked the synthesized ARM64 Lambda definition locally and returned HTTP
+200 from `/config`; local x86-to-ARM emulation completed in 5.93 seconds. After
+cutover, the superseded `commander-rec-phase2` stack and manually created S3,
+CloudFront, and prefix-function resources were removed.
+
+**Checkpoint: Complete.** `cdk deploy` recreates the verified architecture, and
+SAM can invoke the synthesized Lambda definition locally.
 
 ## Phase 6: Operational Guardrails
 

@@ -1,0 +1,12 @@
+.git
+.venv
+**/.venv
+.aws-sam
+**/cdk.out
+frontend/node_modules
+frontend/dist
+data/raw
+qa
+tmp
+**/__pycache__
+**/.pytest_cache
