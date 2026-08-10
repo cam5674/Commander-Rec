@@ -255,20 +255,18 @@ browser upload flow all returned HTTP 200.
 
 ## Phase 3: Frontend Hosting
 
-- Create a private S3 bucket with static website hosting disabled.
-- Grant CloudFront access through Origin Access Control.
-- Set `index.html` as the default root object.
-- Do not map distribution-wide 403 or 404 responses to `index.html`; that
-  would also replace API-origin errors with frontend HTML.
-- The current frontend has no client-side routes and needs no SPA fallback.
-  If routing is added later, use a viewer-request rewrite associated only with
-  the default S3 behavior.
-- Cache content-hashed assets with `max-age=31536000, immutable`.
-- Serve `index.html` with `no-cache`.
-- Use CloudFront price class 100 initially.
+**Status: Complete.** The production Vite build is hosted in a private S3
+bucket with static website hosting and public access disabled. A pay-as-you-go
+CloudFront distribution uses signed Origin Access Control requests, the
+default CloudFront certificate, `index.html` as its default root object,
+`CachingOptimized`, automatic compression, and price class 100. WAF, custom
+domains, and distribution-wide error rewrites remain disabled.
 
-**Checkpoint:** the frontend loads from the CloudFront URL and static assets
-remain private at the S3 origin.
+`index.html` is served with `no-cache`; content-hashed JavaScript, CSS, and
+font assets use `public,max-age=31536000,immutable`. JavaScript metadata was
+verified as `application/javascript`. CloudFront returned HTTP 200 for the
+root, assets, favicon, and sample CSV, while direct S3 access returned HTTP
+403 and a missing CloudFront path was not rewritten to `index.html`.
 
 ## Phase 4: Single-Origin API Wiring
 
