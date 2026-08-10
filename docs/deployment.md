@@ -364,6 +364,27 @@ has been tested and safely restored.
 
 ## Phase 7: Cold-Start Tuning
 
+**Status: Complete.** AWS Lambda Power Tuning compared 1,024, 1,536, 1,769,
+and 2,048 MB with ten realistic-collection invocations per setting. At 1,769
+MB, average duration was 2,035.25 ms and average invocation cost was
+`$0.00004783`. Compared with 1,024 MB, this was 43.8% faster and 2.9% cheaper;
+2,048 MB was slightly slower and 17% more expensive than 1,769 MB. CDK now
+configures the ARM64 function at 1,769 MB while retaining the 10-second
+timeout.
+
+The first deployed request at the new setting recorded 1,202.05 ms of Lambda
+initialization and 621.62 ms of explicit reference loading, followed by
+2,685.67 ms of handler duration. The warm request completed in 1,918.73 ms
+with reference-data cache hits. Peak memory was 262 MB, and logs contained
+timing metadata without uploaded collection contents.
+
+Cold and warm responses were byte-identical with SHA256
+`B8A6BD3FBC951EB102C878846F88BFADDA0ADF014189C73E41C7E3B6B593C3B0`.
+The deployed package size reported by Lambda was 12,083,894 bytes (11.53 MiB).
+The measured latency meets the MVP target, so faster deserialization and
+SnapStart remain deferred. The temporary Power Tuning stack and S3 payload
+bucket were deleted after validation.
+
 Follow the [cold-start guide](deployment/cold-starts.md):
 
 1. measure explicit reference loading separately from Lambda initialization
@@ -375,8 +396,9 @@ SnapStart requires eager reference-data initialization and is reconsidered
 only after deployed measurements, compatibility confirmation, and automated
 version cleanup.
 
-**Checkpoint:** deployed cold and warm latency meet the MVP target, or the
-remaining limitation and accepted tradeoff are documented.
+**Checkpoint: Complete.** Deployed cold and warm latency meet the MVP target,
+the selected memory setting is defined in CDK, and temporary tuning resources
+have been removed.
 
 ## Phase 8: CI/CD and Reference-Data Staging
 

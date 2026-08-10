@@ -26,7 +26,7 @@ def test_lambda_configuration_and_logs() -> None:
             "Runtime": "python3.12",
             "Architectures": ["arm64"],
             "Handler": "backend.lambda_handler.handler",
-            "MemorySize": 1024,
+            "MemorySize": 1769,
             "Timeout": 10,
             "Environment": {
                 "Variables": {

@@ -97,7 +97,7 @@ class InfraStack(Stack):
             architecture=lambda_.Architecture.ARM_64,
             handler="backend.lambda_handler.handler",
             code=api_code,
-            memory_size=1024,
+            memory_size=1769,
             timeout=Duration.seconds(10),
             role=function_role,
             log_group=function_log_group,
