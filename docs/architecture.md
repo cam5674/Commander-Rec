@@ -13,7 +13,7 @@ The project has two distinct workflows:
 ```mermaid
 flowchart LR
     S[Scryfall Oracle Cards] --> D[download_scryfall.py]
-    D --> R[data/raw/oracle_cards.json]
+    D --> R[data/raw/oracle_cards.jsonl.gz]
     R --> P[process_scryfall.py]
     P --> J[data/processed JSON files]
     J --> L[data_loader.py cache]
@@ -47,13 +47,15 @@ python scripts/process_scryfall.py
 ### Download
 
 `scripts/download_scryfall.py` retrieves Scryfall bulk-data metadata, selects
-the `oracle_cards` download, and streams it to
-`data/raw/oracle_cards.json`. The download is first written to a temporary
-`.part` file so an interrupted request does not replace a valid dataset.
+the compressed `oracle_cards` JSONL download, and streams it to
+`data/raw/oracle_cards.jsonl.gz`. The download is first written to a
+temporary `.part` file so an interrupted request does not replace a valid
+dataset.
 
 ### Processing
 
-`scripts/process_scryfall.py` reads the raw cards and:
+`scripts/process_scryfall.py` reads the gzip-compressed JSONL one card at a
+time and:
 
 - skips cards that are unavailable in paper
 - keeps the fields required by the recommendation engine

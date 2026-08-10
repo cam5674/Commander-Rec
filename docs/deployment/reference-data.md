@@ -17,8 +17,8 @@ The Lambda package requires the generated files from `data/processed`:
 | `commanders.json` | Approximately 128 KB | Commander-eligible Oracle IDs |
 | **Total** | **31,469,912 bytes / 30.01 MiB** | |
 
-The raw `data/raw/oracle_cards.json` file is a processing input and must not be
-included in the Lambda package.
+The raw `data/raw/oracle_cards.jsonl.gz` file is a processing input and must
+not be included in the Lambda package.
 
 ## Packaging Decision
 
@@ -47,15 +47,13 @@ Include:
 - FastAPI and its runtime dependencies
 - `python-multipart` on the synchronous-upload branch
 - Mangum
-- `ijson` while the request path imports classification helpers from
-  `scripts/process_scryfall.py`
 
 Exclude dependencies used only for local serving, tests, downloads, or data
 generation, including `uvicorn[standard]`, `httpx`, and `requests` unless a
 later runtime change makes one necessary.
 
-The package is not pure Python. `pydantic-core` is compiled, and `ijson` may
-select a compiled backend. Build Linux arm64 wheels explicitly:
+The package is not pure Python because `pydantic-core` is compiled. Build
+Linux arm64 wheels explicitly:
 
 ```powershell
 pip install `

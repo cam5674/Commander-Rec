@@ -8,8 +8,6 @@ import requests
 
 API_DOWNLOAD_URL = "https://api.scryfall.com/bulk-data"
 
-CHUNK_SIZE = 1024 * 1024
-
 HEADERS = {
     "User-Agent": "MTGCommanderRecommender/0.1",
     "Accept": "application/json",
@@ -17,15 +15,15 @@ HEADERS = {
 
 
 
-DEFAULT_OUTPUT_PATH = Path("data/raw/oracle_cards.json")
+DEFAULT_OUTPUT_PATH = Path("data/raw/oracle_cards.jsonl.gz")
 
 # Number of bytes downloaded at a time.
 CHUNK_SIZE = 1024 * 1024  # 1 MB
 
 
-def get_default_cards_metadata() -> dict[str, Any]:
+def get_oracle_cards_metadata() -> dict[str, Any]:
     """
-    Retrieve metadata for Scryfall's default_cards bulk-data file.
+    Retrieve metadata for Scryfall's Oracle Cards bulk-data file.
     """
     response = requests.get(
         API_DOWNLOAD_URL,
@@ -36,13 +34,17 @@ def get_default_cards_metadata() -> dict[str, Any]:
 
     result = response.json()
     print("response success")
-    # can change "type" to download other files from bulk-data
     for bulk_file in result["data"]:
         if bulk_file["type"] == "oracle_cards":
+            if not bulk_file.get("jsonl_download_uri"):
+                raise RuntimeError(
+                    "Scryfall's oracle_cards entry did not include a "
+                    "JSONL download URL."
+                )
             return bulk_file
 
     raise RuntimeError(
-        "Scryfall did not return a default_cards bulk-data entry."
+        "Scryfall did not return an oracle_cards bulk-data entry."
     )
 
 
@@ -116,15 +118,15 @@ def main() -> None:
     try:
         print("Retrieving Scryfall bulk-data metadata...")
 
-        metadata = get_default_cards_metadata()
+        metadata = get_oracle_cards_metadata()
 
         print(f"Bulk file: {metadata['name']}")
         print(f"Updated: {metadata['updated_at']}")
-        print(f"Download URL: {metadata['download_uri']}")
+        print(f"Download URL: {metadata['jsonl_download_uri']}")
         print("Starting download...")
 
         download_file(
-            download_url=metadata["download_uri"],
+            download_url=metadata["jsonl_download_uri"],
             output_path=DEFAULT_OUTPUT_PATH,
         )
 

@@ -1,15 +1,13 @@
 from __future__ import annotations
 
+import gzip
 import json
 import re
 import unicodedata
 from pathlib import Path
 from typing import Any
 
-import ijson
-
-
-INPUT_PATH = Path("data/raw/oracle_cards.json")
+INPUT_PATH = Path("data/raw/oracle_cards.jsonl.gz")
 CARDS_OUTPUT_PATH = Path("data/processed/cards_by_id.json")
 NAME_LOOKUP_OUTPUT_PATH = Path("data/processed/name_to_id.json")
 COMMANDERS_OUTPUT_PATH = Path("data/processed/commanders.json")
@@ -511,12 +509,22 @@ def process_cards(
     processed_count = 0
     skipped_non_paper_count = 0
 
-    with input_path.open("rb") as source_file:
-        for raw_card in ijson.items(
-            source_file,
-            "item",
-            use_float=True,
-        ):
+    with gzip.open(
+        input_path,
+        "rt",
+        encoding="utf-8",
+    ) as source_file:
+        for line_number, line in enumerate(source_file, start=1):
+            if not line.strip():
+                continue
+
+            try:
+                raw_card = json.loads(line)
+            except json.JSONDecodeError as error:
+                raise ValueError(
+                    f"Invalid Scryfall JSONL on line {line_number}."
+                ) from error
+
             # Defensive check in case the input contains an unusual object.
             if not raw_card.get("oracle_id") or not raw_card.get("name"):
                 continue

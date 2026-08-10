@@ -1,3 +1,4 @@
+import gzip
 import json
 import tempfile
 import unittest
@@ -522,15 +523,14 @@ class DataPipelineTests(unittest.TestCase):
             ],
         )
         multiface_card.pop("image_uris")
-        input_path = self.directory / "oracle_cards.json"
-        input_path.write_text(
-            json.dumps([
+        input_path = self.directory / "oracle_cards.jsonl.gz"
+        with gzip.open(input_path, "wt", encoding="utf-8") as input_file:
+            for card in (
                 multiface_card,
                 {"name": "Missing Oracle ID"},
                 commander,
-            ]),
-            encoding="utf-8",
-        )
+            ):
+                input_file.write(json.dumps(card) + "\n")
 
         with redirect_stdout(StringIO()):
             cards, names, commanders, themes = process_cards(input_path)
