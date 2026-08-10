@@ -236,22 +236,22 @@ regression tests through a Lambda-compatible handler.
 
 ## Phase 2: Manual Backend Deployment
 
-Deploy once manually to understand the resources that CDK will later define.
+**Status: Complete.** The Python 3.12 `arm64` artifact was deployed manually
+through SAM and CloudFormation in `us-west-1` with 1,024 MB memory and a
+10-second timeout. The HTTP API default stage was throttled to 10 requests per
+second with burst 20. Reserved concurrency 5 was deferred because the account
+concurrency quota is 10; the account limit and API throttle provide the test
+deployment's safety bounds.
 
-- Build runtime dependencies as Linux `aarch64` wheels using the command in
-  the [reference-data guide](deployment/reference-data.md#lambda-runtime-dependencies).
-- Start with 1,024 MB memory, a 10-second timeout, and reserved concurrency 5.
-- Create an API Gateway HTTP API Lambda proxy integration.
-- Configure route throttling at 10 requests/second with burst 20.
-- Use the corrected local CSV path `data/raw/test_collection.csv` for the
-  synchronous verification request.
-- On Phase 0b, run the complete live presign, upload, recommendation, and
-  deletion flow instead.
-- Record explicit reference-load timing; do not treat Lambda `Init Duration`
-  as reference-data load time.
-
-**Checkpoint:** recommendations return from the API Gateway URL, the selected
-upload flow works, and cold/warm timings are recorded.
+Both `data/raw/test_collection.csv` and
+`data/raw/test_collection_realistic.csv` returned 20 recommendations through
+API Gateway and the localhost frontend. The cold request took 3.179 seconds
+end-to-end (977.13 ms Lambda initialization, 1,257.14 ms handler duration,
+870.51 ms explicit reference loading); the warm request took 0.579 seconds
+end-to-end (284.77 ms handler duration with reference-data cache hits). Peak
+memory was 250 MB. Gzip reduced the response to 11,157 bytes, and cold/warm
+response hashes were identical. `/config`, `/recommendations`, CORS, and the
+browser upload flow all returned HTTP 200.
 
 ## Phase 3: Frontend Hosting
 

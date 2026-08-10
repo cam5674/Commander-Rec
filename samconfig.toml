@@ -1,0 +1,15 @@
+version = 0.1
+
+[default.deploy.parameters]
+stack_name = "commander-rec-phase2"
+resolve_s3 = true
+s3_prefix = "commander-rec-phase2"
+region = "us-west-1"
+profile = "commander-rec"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "FunctionTimeout=\"10\""
+image_repositories = []
+
+[default.global.parameters]
+region = "us-west-1"
