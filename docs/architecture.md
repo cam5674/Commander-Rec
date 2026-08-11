@@ -10,22 +10,9 @@ The project has two distinct workflows:
 1. A local reference-data pipeline downloads and normalizes Scryfall data.
 2. A request pipeline parses an uploaded collection and returns recommendations.
 
-```mermaid
-flowchart LR
-    S[Scryfall Oracle Cards] --> D[download_scryfall.py]
-    D --> R[data/raw/oracle_cards.jsonl.gz]
-    R --> P[process_scryfall.py]
-    P --> J[data/processed JSON files]
-    J --> L[data_loader.py cache]
+![MTG Commander Recommender architecture pipeline](images/architecture-pipeline.svg)
 
-    F[Frontend CSV upload] --> A[FastAPI /recommendations]
-    A --> C[csv_parser.py]
-    C --> T[theme_scorer.py]
-    L --> C
-    L --> T
-    T --> M[Pydantic response models]
-    M --> F
-```
+[Open the editable Draw.io source](diagrams/rec_app_pipeline.drawio).
 
 This diagram describes the application flow independently of its hosting
 environment. Local development uses FastAPI/Uvicorn, Vite, and localhost CORS

@@ -159,6 +159,9 @@ CloudFront provides one public origin for the application. The frontend uses
 relative `/api` requests, and a viewer-request CloudFront Function removes that
 prefix before forwarding requests to the existing FastAPI routes.
 
+See the detailed [system pipeline diagram](docs/architecture.md#system-overview)
+for the runtime request path and offline Scryfall reference-data build.
+
 The Lambda function should use cached reference data, not cached user data.
 
 Reference data includes:
