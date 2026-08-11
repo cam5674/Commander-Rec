@@ -66,9 +66,9 @@
   <rect class="label-bg" x="1694" y="406" width="82" height="20" rx="3"/>
   <text x="1735" y="421" text-anchor="middle" class="edge-text">top themes</text>
 
-  <path class="edge" d="M 1910 390 V 335 H 1900 V 290"/>
-  <rect class="label-bg" x="1846" y="337" width="126" height="18" rx="3"/>
-  <text x="1909" y="350" text-anchor="middle" class="edge-text">Pydantic response</text>
+  <path class="edge" d="M 1980 390 V 290"/>
+  <rect class="label-bg" x="1990" y="327" width="126" height="18" rx="3"/>
+  <text x="2053" y="340" text-anchor="middle" class="edge-text">Pydantic response</text>
 
   <path class="edge" d="M 1640 160 H 1710 V 238 H 1795"/>
   <rect class="label-bg" x="1654" y="143" width="72" height="18" rx="3"/>
