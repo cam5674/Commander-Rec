@@ -4,6 +4,8 @@
 
 MTG Commander Recommender is a serverless web application that helps Magic: The Gathering players find commanders that fit the cards they already own.
 
+**Live app:** [https://d2ty1k3iwvq5qj.cloudfront.net/](https://d2ty1k3iwvq5qj.cloudfront.net/)
+
 Users upload a card collection, and the app analyzes the collection for Commander-relevant themes such as wheels, tokens, graveyard recursion, artifacts, spellslinger, lifegain, aristocrats, and +1/+1 counters. It then recommends commanders that match those themes and explains why each commander was selected.
 
 Example: if a user owns many wheel effects and card-draw payoffs, the app may recommend commanders such as The Locust God because those cards support a wheel-based strategy.
