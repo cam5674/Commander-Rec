@@ -103,8 +103,8 @@
         <mxCell id="edge-score-response" edge="1" parent="1" source="scoring" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;" target="response-note" value="Pydantic response">
           <mxGeometry relative="1" as="geometry">
             <Array as="points">
-              <mxPoint x="1900" y="350" />
-              <mxPoint x="1900" y="350" />
+              <mxPoint x="1980" y="350" />
+              <mxPoint x="1980" y="350" />
             </Array>
           </mxGeometry>
         </mxCell>
